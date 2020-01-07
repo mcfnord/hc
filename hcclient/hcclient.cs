@@ -66,7 +66,7 @@ namespace HexCClient
         async static Task Main(string[] args)
         {
             using var client = new HttpClient();
-            var jsonContent = await client.GetStringAsync("https://localhost:44310/Board/Board?gameId=123&color=white");
+            var jsonContent = await client.GetStringAsync("http://hexchess.cloud/Board/Board?gameId=123&color=white");
 
             var pieces = JsonSerializer.Deserialize<List<Spot>>(jsonContent);
 
@@ -165,11 +165,22 @@ namespace HexCClient
                         }
                         else
                         {
-                            // for now, just move the piece
-                            PlacedPiece pp = b.AnyoneThere(selected);
+                            PlacedPiece pp = b.AnyoneThere(selected); // we selected this one earlier
+
+                            PlacedPiece pp_dest = b.AnyoneThere(cursor);
+                            if (null != pp_dest)
+                            {
+                                // I can drop my piece on opponent, or Queen-King if valid. But postponing Queen-King magic for now.
+                                if (pp_dest.Color == pp.Color)
+                                    continue;
+
+                                b.Remove(pp_dest);
+                                b.SidelinedPieces.Add(pp_dest);
+                            }
                             b.Remove(pp);
-                            PlacedPiece pp_dest = new PlacedPiece(pp, cursor);
-                            b.Add(pp_dest);
+                            PlacedPiece ppNew = new PlacedPiece(pp, cursor);
+                            b.Add(ppNew);
+
                             selected = null;
                         }
                         break;
