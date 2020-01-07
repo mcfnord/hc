@@ -20,7 +20,35 @@ namespace hcsvr
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    webBuilder.UseStartup<Startup>();
+                    /*
+                    webBuilder.UseKestrel(
+                        options =>
+                        {
+                            options.Listen(System.Net.IPAddress.Any, 80);
+                      //      options.Listen(System.Net.IPAddress.Parse("52.35.121.62"), 80);
+                        }
+                        );
+                        */
+
+                    //    webBuilder.UseIISIntegration();
+                    /*
+                    webBuilder.UseKestrel((context, serverOptions) =>
+                    {
+                        serverOptions.Configure(context.Configuration.GetSection("Kestrel"))
+                            .Endpoint("HTTPS", listenOptions =>
+                            {
+                                listenOptions.HttpsOptions.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
+                            });
+                    });
+                    */
+
+                    webBuilder.UseStartup<Startup>()
+                    .UseKestrel(
+                        options =>
+                        {
+                            options.Listen(System.Net.IPAddress.Any, 80);
+                        }
+                        );
                 });
     }
 }
