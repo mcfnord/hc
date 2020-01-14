@@ -242,8 +242,8 @@ namespace hcsv2020.Controllers
         {
             public int Q { get; set; }
             public int R { get; set; }
-            public string color { get; set; }
-            public string piece { get; set; }
+            public string Color { get; set; }
+            public string Piece { get; set; }
         }
 
         public class PrettyJsonPiece
@@ -283,6 +283,25 @@ namespace hcsv2020.Controllers
                 }
             }
         }
+
+
+        [HttpPost]
+        public IActionResult Moves()
+        {
+            System.IO.Stream req = Request.Body;
+       //     req.Seek(0, System.IO.SeekOrigin.Begin);
+            string json = new System.IO.StreamReader(req).ReadToEnd();
+            json = json.Replace("\\\"", "");
+
+            var pieces = System.Text.Json.JsonSerializer.Deserialize<List<Spot>>(json);
+
+            Console.WriteLine();
+
+            json = json.Replace("\\\"", "");
+
+            return Ok();
+        }
+
 
         [HttpGet]
         public IActionResult Board([FromQuery] string gameId, [FromQuery] string color)
@@ -426,6 +445,7 @@ namespace hcsv2020.Controllers
             finally { s.Release(); }
         }
 
+        /* revive this when I'm using CORS again
 
         [HttpOptions]
         public IActionResult Board()
@@ -438,6 +458,8 @@ namespace hcsv2020.Controllers
 
             return Ok();
         }
+    */
+
     }
 }
 

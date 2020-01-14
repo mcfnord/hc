@@ -46,6 +46,7 @@ namespace hcsvr
                     .UseKestrel(
                         options =>
                         {
+                            options.AllowSynchronousIO = true;
                             options.Listen(System.Net.IPAddress.Any, 80);
                         }
                         );
