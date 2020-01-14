@@ -4,8 +4,7 @@ using System.Threading.Tasks;
 using System.Text.Json;
 using System.Collections.Generic;
 using HexC;
-
-
+using Newtonsoft.Json;
 
 namespace HexCClient
 {
@@ -63,12 +62,65 @@ namespace HexCClient
         }
 
 
+
+        public class PrettyJsonPiece
+        {
+            public string Color { get; set; }
+            public string Piece { get; set; }
+        }
+
+        public class PrettyJsonPlacedPiece : PrettyJsonPiece
+        {
+            public int Q { get; set; }
+            public int R { get; set; }
+        }
+
+        public class PrettyJsonBoard : List<object>
+        {
+            public PrettyJsonBoard(List<PlacedPiece> lpPlaced, PieceList plSidelined)
+            {
+                foreach (PlacedPiece pp in lpPlaced)
+                {
+                    PrettyJsonPlacedPiece pjp = new PrettyJsonPlacedPiece();
+                    pjp.Q = pp.Location.Q;
+                    pjp.R = pp.Location.R;
+                    pjp.Color = pp.Color.ToString();
+                    pjp.Piece = pp.PieceType.ToString();
+                    this.Add(pjp);
+                }
+                foreach (var p in plSidelined)
+                {
+                    PrettyJsonPlacedPiece pjp = new PrettyJsonPlacedPiece();
+                    pjp.Color = p.Color.ToString();
+                    pjp.Piece = p.PieceType.ToString();
+                    pjp.Q = 99;
+                    pjp.R = 99;
+
+                    this.Add(pjp);
+                }
+            }
+        }
+
+
+        // We ask the server if this submission is legit.
+        async static Task Submit(Board b)
+        {
+            PrettyJsonBoard pjb = new PrettyJsonBoard(b.PlacedPieces, b.SidelinedPieces);
+            // I may as well submit the whole board to the server, which will decide if the change is valid.
+            // Which probably means a Post with a JSON attachment.
+            using var client = new HttpClient();
+            HttpContent content = new StringContent(JsonConvert.SerializeObject(pjb), System.Text.Encoding.UTF8, "application/json");
+            var jsonContent = await client.PostAsync("http://hexchess.cloud/Board/Moves", content);
+
+        }
+
+
         async static Task Main(string[] args)
         {
             using var client = new HttpClient();
-            var jsonContent = await client.GetStringAsync("http://hexchess.cloud/Board/Board?gameId=123&color=white");
+            var jsonContent = await client.GetStringAsync($"http://hexchess.cloud/Board/Board?gameId={args[0]}&color={args[1]}");
 
-            var pieces = JsonSerializer.Deserialize<List<Spot>>(jsonContent);
+            var pieces = System.Text.Json.JsonSerializer.Deserialize<List<Spot>>(jsonContent);
 
             // with these pieces, render the board cleanly
             HexC.Board b = new HexC.Board();
@@ -79,6 +131,8 @@ namespace HexCClient
                 else
                     b.Add(new PlacedPiece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color), s.Q, s.R));
             }
+
+            Board turnStartBoard = new Board(b); // clone this
 
             // loop as a user interface by showing the board, and commands for the newbies:
             BoardLocation cursor = new BoardLocation(0, 0);
@@ -104,9 +158,14 @@ namespace HexCClient
 
                 ShowTextBoard(b, cursor); // cursor could be null
 
+                Console.WriteLine();
+                Console.WriteLine("134679:Move Cursor\r\n5:Select\r\n-:Sidelined pieces\r\nR:Reset to turn start\r\nF:Finish turn");
+
                 ConsoleKeyInfo cki = Console.ReadKey();
-                switch (cki.KeyChar)
+                switch (cki.KeyChar.ToString().ToLower()[0])
                 {
+                    case 'f': await Submit(b); break;
+                    case 'r': iSlotOfSidelinedPiece = -1; b = turnStartBoard; break;
                     case '1': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, -1, 1); break;
                     case '3': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, 0, 1); break;
                     case '4': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, -1, 0); break;
