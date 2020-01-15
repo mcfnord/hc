@@ -103,15 +103,14 @@ namespace HexCClient
 
 
         // We ask the server if this submission is legit.
-        async static Task Submit(Board b)
+        async static Task Submit(Board b, string gameId)
         {
             PrettyJsonBoard pjb = new PrettyJsonBoard(b.PlacedPieces, b.SidelinedPieces);
             // I may as well submit the whole board to the server, which will decide if the change is valid.
             // Which probably means a Post with a JSON attachment.
             using var client = new HttpClient();
             HttpContent content = new StringContent(JsonConvert.SerializeObject(pjb), System.Text.Encoding.UTF8, "application/json");
-            var jsonContent = await client.PostAsync("http://hexchess.cloud/Board/Moves", content);
-
+            var jsonContent = await client.PostAsync($"http://hexchess.cloud/Board/Moves?gameId={gameId}", content);
         }
 
 
@@ -164,7 +163,7 @@ namespace HexCClient
                 ConsoleKeyInfo cki = Console.ReadKey();
                 switch (cki.KeyChar.ToString().ToLower()[0])
                 {
-                    case 'f': await Submit(b); break;
+                    case 'f': await Submit(b, args[0]); break;
                     case 'r': iSlotOfSidelinedPiece = -1; b = turnStartBoard; break;
                     case '1': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, -1, 1); break;
                     case '3': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, 0, 1); break;
