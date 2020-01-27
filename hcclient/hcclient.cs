@@ -110,14 +110,14 @@ namespace HexCClient
             // Which probably means a Post with a JSON attachment.
             using var client = new HttpClient();
             HttpContent content = new StringContent(JsonConvert.SerializeObject(pjb), System.Text.Encoding.UTF8, "application/json");
-            var jsonContent = await client.PostAsync($"http://hexchess.cloud/Board/Moves?gameId={gameId}", content);
+            var jsonContent = await client.PostAsync($"http://localhost/Board/Moves?gameId={gameId}", content);
         }
 
 
         async static Task Main(string[] args)
         {
             using var client = new HttpClient();
-            var jsonContent = await client.GetStringAsync($"http://hexchess.cloud/Board/Board?gameId={args[0]}&color={args[1]}");
+            var jsonContent = await client.GetStringAsync($"http://localhost/Board/Board?gameId={args[0]}&color={args[1]}");
 
             var pieces = System.Text.Json.JsonSerializer.Deserialize<List<Spot>>(jsonContent);
 
