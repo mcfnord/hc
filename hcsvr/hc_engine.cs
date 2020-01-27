@@ -249,9 +249,9 @@ public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
         int r;
     }
 
-    enum EventTypeEnum { Add, Remove };
+    public enum EventTypeEnum { Add, Remove };
 
-    class PieceEvent
+    public class PieceEvent
     {
         public PieceEvent(PlacedPiece p, EventTypeEnum t)
         { this.p = p; this.t = t; }
@@ -264,7 +264,7 @@ public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
     }
 
 
-    class Board
+    public class Board
     {
         // MEMBERS
         List<PlacedPiece> placedPieces = new List<PlacedPiece>();
