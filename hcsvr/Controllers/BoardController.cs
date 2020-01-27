@@ -25,9 +25,13 @@ namespace hcsv2020.Controllers
             return col;
         }
 
+
+
         public static Board GameBoard(string gameId)
         {
-            Debug.Assert(ContainsGame(gameId));
+            if (false == m_allBoards.ContainsKey(gameId))
+                return null;
+
             return m_allBoards[gameId];
         }
 
@@ -60,19 +64,21 @@ namespace hcsv2020.Controllers
             return m_yourTurn[gameId];
         }
 
-        public static void LastReportedTurnEnd(string gameId, string color)
+        public static void ReportSuccessfulTurn(string gameId, HexC.ColorsEnum color, Board b)
         {
+            // could save turn history here but here i just trash it.
+            m_allBoards[gameId] = b;
             switch (color)
             {
-                case "white":
+                case HexC.ColorsEnum.White:
                     m_yourTurn[gameId] = HexC.ColorsEnum.Tan;
                     return;
 
-                case "tan":
+                case HexC.ColorsEnum.Tan:
                     m_yourTurn[gameId] = HexC.ColorsEnum.Black;
                     return;
 
-                case "black":
+                case HexC.ColorsEnum.Black:
                     m_yourTurn[gameId] = HexC.ColorsEnum.White;
                     return;
 
@@ -85,7 +91,15 @@ namespace hcsv2020.Controllers
         public static void MakeCertainGameExists(string gameId)
         {
             var board = VisualBoardStore.GameBoard(gameId);
+            if (null != board)
+                return;
             HexC.Board b = new HexC.Board();
+
+            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Black, -2, -3));
+            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.White, 5, -3));
+            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Tan, -4, 5));
+
+            /*
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.Black, -1, -4));
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.Black, -4, -1));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Black, -1, -3));
@@ -110,6 +124,12 @@ namespace hcsv2020.Controllers
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.White, 4, -1));
             b.Add(new Piece(PiecesEnum.Castle, ColorsEnum.White)); // I have a castle on the sidelines.
             b.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Tan)); // I have a castle on the sidelines.
+
+            */
+
+            m_allBoards.Add(gameId, b);
+            m_yourTurn.Add(gameId, ColorsEnum.Black);
+
         }
     }
 
@@ -208,6 +228,154 @@ namespace hcsv2020.Controllers
             }
         }
 
+        protected static bool BoardsMatch(Board b1, Board b2)
+        {
+            // Are there any Consequential differences?
+            foreach (var pp in b1.PlacedPieces)
+            {
+                var samePP = b2.AnyoneThere(pp.Location);
+                if (null == samePP)                                        return false;
+                if (samePP.PieceType != pp.PieceType) return false;
+                if (samePP.Color != pp.Color)         return false;
+            }
+
+            foreach (var pp in b2.PlacedPieces)
+            {
+                var samePP = b1.AnyoneThere(pp.Location);
+                if (null == samePP)                                        return false;
+                if (samePP.PieceType != pp.PieceType) return false;
+                if (samePP.Color != pp.Color)         return false;
+            }
+
+            foreach (var p in b1.SidelinedPieces)
+                if (false == b2.SidelinedPieces.Contains(p))
+                    return false;
+
+            foreach (var p in b2.SidelinedPieces)
+                if (false == b1.SidelinedPieces.Contains(p))
+                    return false;
+
+            return true;
+        }
+
+        protected static void SetPieceColor(ColorsEnum color)
+        {
+            switch (color)
+            {
+                case ColorsEnum.Black: Console.ForegroundColor = ConsoleColor.Cyan; break;
+                case ColorsEnum.White: Console.ForegroundColor = ConsoleColor.White; break;
+                case ColorsEnum.Tan: Console.ForegroundColor = ConsoleColor.Red; break;
+            }
+        }
+
+        public static void ShowTextBoard(Board b, BoardLocation singleSpot = null, BoardLocationList highlights = null)
+        {
+            // Spit sequentially
+            // the lines grow, then shrink
+            // 6, then 7, then 8, then 9, up to 11, then back down.
+            // FIRST:  how many in this line.
+            // SECOND: first of the two coordinates, that increment across the line.
+            // THIRD:  the other coordinate, that does not change across this line.
+            int[,] Lines =  { { 6,  0, -5 },
+                              { 7, -1, -4 },
+                              { 8, -2, -3 },
+                              { 9, -3, -2 },
+                              {10, -4, -1 },
+                              {11, -5,  0 },
+                              {10, -5,  1 },
+                              { 9, -5,  2 },
+                              { 8, -5,  3 },
+                              { 7, -5,  4 },
+                              { 6, -5,  5 } };
+
+            for (int iLine = 0; iLine < Lines.GetLength(0); iLine++)
+            {
+                Console.ResetColor();
+                // First ident this many spaces: 11 minus how-many-this-line
+                Console.Write("             ".Substring(0, 11 - Lines[iLine, 0]));
+
+                // now increment through the line
+                for (int iPos = 0; iPos < Lines[iLine, 0]; iPos++)
+                {
+                    BoardLocation spot = new BoardLocation(Lines[iLine, 1] + iPos, Lines[iLine, 2]);
+
+                    if (highlights != null)
+                    {
+                        if (highlights.ContainsTheLocation(spot))
+                        {
+                            Console.BackgroundColor = ConsoleColor.DarkYellow;
+                        }
+                    }
+
+                    if (singleSpot != null)
+                    {
+                        if (BoardLocation.IsSameLocation(singleSpot, spot))
+                            Console.BackgroundColor = ConsoleColor.DarkRed;
+                    }
+
+                    PlacedPiece p = b.AnyoneThere(spot);
+                    if (null == p)
+                    {
+                        if (spot.IsPortal)
+                            Console.BackgroundColor = ConsoleColor.DarkGray;
+
+                        Console.ForegroundColor = ConsoleColor.Gray;
+                        Console.Write(spot.IsPortal ? "X" : "·");
+                        Console.BackgroundColor = ConsoleColor.Black;
+                        Console.ResetColor();
+                        Console.Write(" ");
+                    }
+                    else
+                    {
+                        SetPieceColor(p.Color);
+                        Console.Write(p.ToChar());
+                        Console.BackgroundColor = ConsoleColor.Black;
+                        Console.Write(" ");
+                    }
+                }
+                Console.WriteLine();
+            }
+
+        }
+
+
+
+        protected static bool CanFindOptionResultingInNewBoard(HexC.ColorsEnum col, Board bFrom, Board bTo)
+        {
+            ShowTextBoard(bTo);
+
+            foreach (var piece in bFrom.PlacedPiecesThisColor(col))
+            {
+                var options = bFrom.WhatCanICauseWithDoo(piece);
+
+                foreach (var option in options)
+                {
+                    Board bThisBoard = new Board(bFrom); // clone the original
+
+                    foreach (var anEvent in option)
+                    {
+                        switch (anEvent.EventType)
+                        {
+                            case EventTypeEnum.Add:
+                                bThisBoard.Add(anEvent.Regarding);
+                                break;
+
+                            case EventTypeEnum.Remove:
+                                bThisBoard.Remove(anEvent.Regarding);
+                                break;
+                        }
+                    }
+                    // Does this new board match the desired outcome board?
+                    if (BoardsMatch(bThisBoard, bTo))
+                        return true;
+
+                    Console.WriteLine("Boards do NOT match:");
+                    ShowTextBoard(bThisBoard);
+                }
+            }
+            return false;
+        }
+
 
         [HttpPost]
         public IActionResult Moves([FromQuery] string gameId)
@@ -217,18 +385,44 @@ namespace hcsv2020.Controllers
             string json = new System.IO.StreamReader(req).ReadToEnd();
             var pieces = System.Text.Json.JsonSerializer.Deserialize<List<Spot>>(json);
 
-            // with these pieces, render the board cleanly
-            HexC.Board b = new HexC.Board();
+            HexC.Board bProposed = new HexC.Board();
             foreach (Spot s in pieces)
             {
                 if (s.Q == 99)
-                    b.Add(new Piece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color)));
+                    bProposed.Add(new Piece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color)));
                 else
-                    b.Add(new PlacedPiece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color), s.Q, s.R));
+                    bProposed.Add(new PlacedPiece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color), s.Q, s.R));
             }
 
             // We have a board that shows what a player wants to change the board to.
             // What player? We have no idea. I do know the gameId, and that should tell me the turn state.
+            // I want to determine what moves go into this move.
+            // Then I can determine which color can do these turns,
+            // and finally confirm that the turn is valid for zero, one, or (surprisingly) two turners.
+            // and if it's that one turner's turn, then i update the board and report success.
+
+            // i guess i have a while system that determines board outcomes that are valid for a color.
+            // and one of these should match this new board, right?
+
+            HexC.ColorsEnum col = VisualBoardStore.WhoseTurn(gameId);
+            if (CanFindOptionResultingInNewBoard(col, VisualBoardStore.GameBoard(gameId), bProposed))
+            {
+                // yeah, it's a move that player can make.
+                // therefore i accept this move, advance the turn.
+                // eventually i'll need to track the last turn to roll back, perhaps multiple rolls back, but for now just takei t.
+                VisualBoardStore.ReportSuccessfulTurn(gameId, col, bProposed);
+                // i guess as far as i'm concerned it's the next player's turn. We all want a visual indicator of whose turn it is. May as well get one.
+                // but here we are today.
+            }
+
+                /*
+            if (CanFindOptionResultingInNewBoard(HexC.ColorsEnum.Black, VisualBoardStore.GameBoard(gameId), bProposed))
+                Console.WriteLine("MoveValidated");
+            if (CanFindOptionResultingInNewBoard(HexC.ColorsEnum.White, VisualBoardStore.GameBoard(gameId), bProposed))
+                Console.WriteLine("MoveValidated");
+            if (CanFindOptionResultingInNewBoard(HexC.ColorsEnum.Tan, VisualBoardStore.GameBoard(gameId), bProposed))
+                Console.WriteLine("MoveValidated");
+                */
 
             return Ok();
         }
