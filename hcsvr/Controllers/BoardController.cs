@@ -53,9 +53,12 @@ namespace hcsv2020.Controllers
 
         // There's just one board per game, but each game has different hue maps for each player.
         //        protected static Dictionary<string, Dictionary<string, string>> m_allPieces = new Dictionary<string, Dictionary<string, string>>();
+
         protected static Dictionary<string, Board> m_allBoards = new Dictionary<string, Board>();
+
 //        protected static Dictionary<string, Dictionary<HexC.ColorsEnum, Dictionary<string, string>>> m_allHues = new Dictionary<string, Dictionary<HexC.ColorsEnum, Dictionary<string, string>>>();
         // I care who pressed Turn End
+
         protected static Dictionary<string, HexC.ColorsEnum> m_yourTurn = new Dictionary<string, HexC.ColorsEnum>();
 
         public static HexC.ColorsEnum WhoseTurn(string gameId)
@@ -427,9 +430,46 @@ namespace hcsv2020.Controllers
             return Ok();
         }
 
+        protected static string StringFromColorEnum(ColorsEnum col)
+        {
+            switch (col)
+            {
+                case ColorsEnum.Black: return "Black";
+                case ColorsEnum.Tan: return "Tan";
+                case ColorsEnum.White: return "White";
+                default:
+                    Debug.Assert(false);
+                    return null;
+            }
+        }
+
+
 
         [HttpGet]
-        public IActionResult Board([FromQuery] string gameId, [FromQuery] string color)
+        public IActionResult WhoseTurn([FromQuery] string gameId)
+        {
+            // fuck CORS for now: Response.Headers.Add("Access-Control-Allow-Origin", "*");
+            System.Threading.Semaphore s = new System.Threading.Semaphore(1, 1, "COPS"); s.WaitOne();
+            try
+            {
+                if (null == gameId)
+                    return BadRequest();
+
+                VisualBoardStore.MakeCertainGameExists(gameId);
+
+                var col = StringFromColorEnum(VisualBoardStore.WhoseTurn(gameId));
+                var jsonString = System.Text.Json.JsonSerializer.Serialize(col);
+
+                Console.WriteLine(jsonString);
+
+                return Ok(jsonString);
+            }
+            finally { s.Release(); }
+        }
+
+
+        [HttpGet]
+        public IActionResult Board([FromQuery] string gameId, [FromQuery] string color) // IS color USED? NO?
         {
             // fuck CORS for now: Response.Headers.Add("Access-Control-Allow-Origin", "*");
             System.Threading.Semaphore s = new System.Threading.Semaphore(1, 1, "COPS"); s.WaitOne();
