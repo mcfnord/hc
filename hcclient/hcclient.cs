@@ -111,6 +111,10 @@ namespace HexCClient
             using var client = new HttpClient();
             HttpContent content = new StringContent(JsonConvert.SerializeObject(pjb), System.Text.Encoding.UTF8, "application/json");
             var jsonContent = await client.PostAsync($"http://localhost/Board/Moves?gameId={gameId}", content);
+            // now i need to confirm that jsonContent accepted the move.
+//            if(false == jsonContent.ShowsMoveIsValid)
+//                reset this whole shit;
+// i'm having trouble breaking in here. i could debug server code on my aws pc. it might simplify debugging, and so is worth a try.
         }
 
 
@@ -131,6 +135,9 @@ namespace HexCClient
                     b.Add(new PlacedPiece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color), s.Q, s.R));
             }
 
+            // Would you please tell me whose turn it is? Maybe later underline the trio above.
+            var whoseTurnWithQuotes = await client.GetStringAsync($"http://localhost/Board/WhoseTurn?gameId={args[0]}");
+
             Board turnStartBoard = new Board(b); // clone this
 
             // loop as a user interface by showing the board, and commands for the newbies:
@@ -142,7 +149,14 @@ namespace HexCClient
             {
                 Console.Clear();
 
-                // Captured pieces across the top please.
+                // I need a clue for colors
+                SetPieceColor(ColorsEnum.Black); Console.Write("Black ");
+                SetPieceColor(ColorsEnum.Tan);   Console.Write("Tan ");
+                SetPieceColor(ColorsEnum.White); Console.WriteLine("White");
+
+                Console.WriteLine("Whose turn is it?: " + whoseTurnWithQuotes);
+
+                // Show captured pieces across the top
                 var sidelined = b.SidelinedPieces;
                 for (int iPieceSlot = 0; iPieceSlot < sidelined.Count; iPieceSlot++)
                 {
