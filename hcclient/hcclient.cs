@@ -101,22 +101,7 @@ namespace HexCClient
             }
         }
 
-
-        // We ask the server if this submission is legit.
-        async static Task Submit(Board b, string gameId)
-        {
-            PrettyJsonBoard pjb = new PrettyJsonBoard(b.PlacedPieces, b.SidelinedPieces);
-            // I may as well submit the whole board to the server, which will decide if the change is valid.
-            // Which probably means a Post with a JSON attachment.
-            using var client = new HttpClient();
-            HttpContent content = new StringContent(JsonConvert.SerializeObject(pjb), System.Text.Encoding.UTF8, "application/json");
-            var jsonContent = await client.PostAsync($"http://localhost/Board/Moves?gameId={gameId}", content);
-            // now i need to confirm that jsonContent accepted the move.
-//            if(false == jsonContent.ShowsMoveIsValid)
-//                reset this whole shit;
-// i'm having trouble breaking in here. i could debug server code on my aws pc. it might simplify debugging, and so is worth a try.
-        }
-
+        protected static string m_whoseTurnItIs; // kooky quotes and stuff, just informational
 
         async static Task Main(string[] args)
         {
@@ -136,7 +121,7 @@ namespace HexCClient
             }
 
             // Would you please tell me whose turn it is? Maybe later underline the trio above.
-            var whoseTurnWithQuotes = await client.GetStringAsync($"http://localhost/Board/WhoseTurn?gameId={args[0]}");
+            m_whoseTurnItIs = await client.GetStringAsync($"http://localhost/Board/WhoseTurn?gameId={args[0]}");
 
             Board turnStartBoard = new Board(b); // clone this
 
@@ -154,7 +139,7 @@ namespace HexCClient
                 SetPieceColor(ColorsEnum.Tan);   Console.Write("Tan ");
                 SetPieceColor(ColorsEnum.White); Console.WriteLine("White");
 
-                Console.WriteLine("Whose turn is it?: " + whoseTurnWithQuotes);
+                Console.WriteLine(m_whoseTurnItIs.Replace("\"", "") + "'s turn.");
 
                 // Show captured pieces across the top
                 var sidelined = b.SidelinedPieces;
@@ -174,11 +159,33 @@ namespace HexCClient
                 Console.WriteLine();
                 Console.WriteLine("134679:Move Cursor\r\n5:Select\r\n-:Sidelined pieces\r\nR:Reset to turn start\r\nF:Finish turn");
 
+                Console.WriteLine("\r\nYou can create this board as a test case:\r\n");
+                foreach (var piece in b.PlacedPieces)
+                {
+                    Console.WriteLine($"b.Add(new PlacedPiece(PiecesEnum.{piece.PieceType}, ColorsEnum.{piece.Color}, {piece.Location.Q}, {piece.Location.R}));");
+                }
+                foreach(var piece in b.SidelinedPieces)
+                {
+                    // wrecklessly omitted for now
+                }
+
                 ConsoleKeyInfo cki = Console.ReadKey();
                 switch (cki.KeyChar.ToString().ToLower()[0])
                 {
-                    case 'f': await Submit(b, args[0]); break;
-                    case 'r': iSlotOfSidelinedPiece = -1; b = turnStartBoard; break;
+                    case 'f':
+                        {
+                            var whoseTurnBefore = await client.GetStringAsync($"http://localhost/Board/WhoseTurn?gameId={args[0]}");
+                            PrettyJsonBoard pjb = new PrettyJsonBoard(b.PlacedPieces, b.SidelinedPieces);
+                            HttpContent content = new StringContent(JsonConvert.SerializeObject(pjb), System.Text.Encoding.UTF8, "application/json");
+                            await client.PostAsync($"http://localhost/Board/Moves?gameId={args[0]}", content);
+                            // ok, the event occurred... now ask whose turn it is!
+                            m_whoseTurnItIs = await client.GetStringAsync($"http://localhost/Board/WhoseTurn?gameId={args[0]}");
+                            if (whoseTurnBefore == m_whoseTurnItIs)
+                                goto case 'r'; // failed. just reset the turn.
+                            turnStartBoard = new Board(b);  // clone it! cuz it's a new turn!
+                            break;
+                        }
+                    case 'r': iSlotOfSidelinedPiece = -1; b = new Board(turnStartBoard); break;
                     case '1': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, -1, 1); break;
                     case '3': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, 0, 1); break;
                     case '4': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, -1, 0); break;
@@ -257,21 +264,6 @@ namespace HexCClient
                         }
                         break;
                 }
-
-                // ok, let user cycle through my pieces.
-                // um i don't have a color... why does Board/Board specify a color? color=white?
-
-                // The user might hit a key to cycle through their pieces of a type.
-                // Or they might hit the Select (enter?).
-
-                // since an any-spot selector needs to run for the drop-here phase,
-                // start iwth an any-spot selector for the select phase.
-
-                // a board has these UI states:
-                // is one piece selected? it can be carried anywhere!
-                // so a white selector background, then when a piece is chosen,
-                // a gray pad under it, and a new white selector for the destination...
-                // and then select a destination. and the move occurs.
             }
         }
 
@@ -353,9 +345,8 @@ namespace HexCClient
                     }
                 }
                 Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Gray;
             }
-
         }
-
     }
 }
