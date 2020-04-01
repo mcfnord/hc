@@ -25,8 +25,6 @@ namespace hcsv2020.Controllers
             return col;
         }
 
-
-
         public static Board GameBoard(string gameId)
         {
             if (false == m_allBoards.ContainsKey(gameId))
@@ -53,6 +51,12 @@ namespace hcsv2020.Controllers
 
         // There's just one board per game, but each game has different hue maps for each player.
         //        protected static Dictionary<string, Dictionary<string, string>> m_allPieces = new Dictionary<string, Dictionary<string, string>>();
+
+        public static void UNIT_TEST_BACKDOOR_allBoardsYourTurn(string gameId, Board b, ColorsEnum col)
+        {
+            m_allBoards[gameId] = b;
+            m_yourTurn[gameId] = col;
+        }
 
         protected static Dictionary<string, Board> m_allBoards = new Dictionary<string, Board>();
 
@@ -98,11 +102,6 @@ namespace hcsv2020.Controllers
                 return;
             HexC.Board b = new HexC.Board();
 
-            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Black, -2, -3));
-            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.White, 5, -3));
-            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Tan, -4, 5));
-
-            /*
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.Black, -1, -4));
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.Black, -4, -1));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Black, -1, -3));
@@ -118,6 +117,7 @@ namespace hcsv2020.Controllers
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Tan, -3, 4));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Tan, -2, 4));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Tan, -1, 4));
+            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Tan, -3, 5));
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.White, 5, -4));
             b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.White, 5, -3));
             b.Add(new PlacedPiece(PiecesEnum.Queen, ColorsEnum.White, 5, -2));
@@ -128,10 +128,8 @@ namespace hcsv2020.Controllers
             b.Add(new Piece(PiecesEnum.Castle, ColorsEnum.White)); // I have a castle on the sidelines.
             b.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Tan)); // I have a castle on the sidelines.
 
-            */
-
             m_allBoards.Add(gameId, b);
-            m_yourTurn.Add(gameId, ColorsEnum.Black);
+            m_yourTurn.Add(gameId, ColorsEnum.Black); // black goes first
 
         }
     }
@@ -156,6 +154,34 @@ namespace hcsv2020.Controllers
 
     public class BoardController : ControllerBase
     {
+
+        class UnitTests
+        {
+            public static bool m_fullTestsFinished = false;
+            public static void RunFullTests()
+            {
+                /*
+                HexC.Board b = new HexC.Board();
+
+b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.White, 5, -5));
+b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -5));
+b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Tan, 2, -4));
+b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Black, -4, -1));
+b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
+ 
+
+                Board bTo = new Board(b);
+                bTo.BruteForceMove(2, -4, 3, -5); // king to new spot
+
+                ShowTextBoard(bTo);
+
+                if (true == CanFindOptionResultingInNewBoard(ColorsEnum.Tan, b, bTo))
+                    Debug.Assert(false); // 
+                    */
+            }
+        }
+
+
         public class Spot
         {
             public int Q { get; set; }
@@ -237,17 +263,17 @@ namespace hcsv2020.Controllers
             foreach (var pp in b1.PlacedPieces)
             {
                 var samePP = b2.AnyoneThere(pp.Location);
-                if (null == samePP)                                        return false;
+                if (null == samePP) return false;
                 if (samePP.PieceType != pp.PieceType) return false;
-                if (samePP.Color != pp.Color)         return false;
+                if (samePP.Color != pp.Color) return false;
             }
 
             foreach (var pp in b2.PlacedPieces)
             {
                 var samePP = b1.AnyoneThere(pp.Location);
-                if (null == samePP)                                        return false;
+                if (null == samePP) return false;
                 if (samePP.PieceType != pp.PieceType) return false;
-                if (samePP.Color != pp.Color)         return false;
+                if (samePP.Color != pp.Color) return false;
             }
 
             foreach (var p in b1.SidelinedPieces)
@@ -370,9 +396,16 @@ namespace hcsv2020.Controllers
                     }
                     // Does this new board match the desired outcome board?
                     if (BoardsMatch(bThisBoard, bTo))
-                        return true;
+                    {
+                        // FOR DEBUGGING PURPOSES, RE-CALL THE WHAT'S=POSSIBLE FUNCTION THAT HAS RESULTED
+                        // IN THE CONCLUSION THIS MOVE IS VALID.
+                        var debugOptions = bFrom.WhatCanICauseWithDoo(piece);
+                        // END DEBUGGING DIAGNOSTIC
 
-                    Console.WriteLine("Boards do NOT match:");
+                        return true;
+                    }
+
+                    // Console.WriteLine("Boards do NOT match:");
                     ShowTextBoard(bThisBoard);
                 }
             }
@@ -380,57 +413,43 @@ namespace hcsv2020.Controllers
         }
 
 
+        // Receive moves that constitute a player's turn, but only accept them if they're confirmed to be a valid outcome.
+
         [HttpPost]
         public IActionResult Moves([FromQuery] string gameId)
         {
-            System.IO.Stream req = Request.Body;
-       //     req.Seek(0, System.IO.SeekOrigin.Begin);
-            string json = new System.IO.StreamReader(req).ReadToEnd();
-            var pieces = System.Text.Json.JsonSerializer.Deserialize<List<Spot>>(json);
-
-            HexC.Board bProposed = new HexC.Board();
-            foreach (Spot s in pieces)
+            System.Threading.Semaphore s = new System.Threading.Semaphore(1, 1, "COPS"); s.WaitOne();
+            try
             {
-                if (s.Q == 99)
-                    bProposed.Add(new Piece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color)));
-                else
-                    bProposed.Add(new PlacedPiece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color), s.Q, s.R));
-            }
+                System.IO.Stream req = Request.Body;
+                //     req.Seek(0, System.IO.SeekOrigin.Begin);
+                string json = new System.IO.StreamReader(req).ReadToEnd();
+                var pieces = System.Text.Json.JsonSerializer.Deserialize<List<Spot>>(json);
 
-            // We have a board that shows what a player wants to change the board to.
-            // What player? We have no idea. I do know the gameId, and that should tell me the turn state.
-            // I want to determine what moves go into this move.
-            // Then I can determine which color can do these turns,
-            // and finally confirm that the turn is valid for zero, one, or (surprisingly) two turners.
-            // and if it's that one turner's turn, then i update the board and report success.
+                HexC.Board bProposed = new HexC.Board();
+                foreach (Spot spot in pieces)
+                {
+                    if (spot.Q == 99)
+                        bProposed.Add(new Piece(FromString.PieceFromString(spot.Piece), FromString.ColorFromString(spot.Color)));
+                    else
+                        bProposed.Add(new PlacedPiece(FromString.PieceFromString(spot.Piece), FromString.ColorFromString(spot.Color), spot.Q, spot.R));
+                }
 
-            // i guess i have a while system that determines board outcomes that are valid for a color.
-            // and one of these should match this new board, right?
-
-            HexC.ColorsEnum col = VisualBoardStore.WhoseTurn(gameId);
-            if (CanFindOptionResultingInNewBoard(col, VisualBoardStore.GameBoard(gameId), bProposed))
-            {
-                // yeah, it's a move that player can make.
-                // therefore i accept this move, advance the turn.
-                // eventually i'll need to track the last turn to roll back, perhaps multiple rolls back, but for now just takei t.
-                VisualBoardStore.ReportSuccessfulTurn(gameId, col, bProposed);
+                // Determine if this proposed board is among the outcomes considered valid for this player on the current board
+                HexC.ColorsEnum col = VisualBoardStore.WhoseTurn(gameId);
+                bool fSuccess = CanFindOptionResultingInNewBoard(col, VisualBoardStore.GameBoard(gameId), bProposed);
+                if (fSuccess)
+                {
+                    // eventually i'll need to track the last turn to roll back, perhaps multiple rolls back, but for now just take it.
+                    VisualBoardStore.ReportSuccessfulTurn(gameId, col, bProposed);
+                }
+                return Ok(System.Text.Json.JsonSerializer.Serialize(fSuccess));
                 // i guess as far as i'm concerned it's the next player's turn. We all want a visual indicator of whose turn it is. May as well get one.
-                // but here we are today.
             }
-
-                /*
-            if (CanFindOptionResultingInNewBoard(HexC.ColorsEnum.Black, VisualBoardStore.GameBoard(gameId), bProposed))
-                Console.WriteLine("MoveValidated");
-            if (CanFindOptionResultingInNewBoard(HexC.ColorsEnum.White, VisualBoardStore.GameBoard(gameId), bProposed))
-                Console.WriteLine("MoveValidated");
-            if (CanFindOptionResultingInNewBoard(HexC.ColorsEnum.Tan, VisualBoardStore.GameBoard(gameId), bProposed))
-                Console.WriteLine("MoveValidated");
-                */
-
-            return Ok();
+            finally { s.Release(); }
         }
-
-        protected static string StringFromColorEnum(ColorsEnum col)
+    
+    protected static string StringFromColorEnum(ColorsEnum col)
         {
             switch (col)
             {
@@ -442,7 +461,6 @@ namespace hcsv2020.Controllers
                     return null;
             }
         }
-
 
 
         [HttpGet]
@@ -471,6 +489,14 @@ namespace hcsv2020.Controllers
         [HttpGet]
         public IActionResult Board([FromQuery] string gameId, [FromQuery] string color) // IS color USED? NO?
         {
+            // On the first run, and only once, I perform a battery of tests.
+            // For now these tests are here, but eventually they might be deeper in the system.
+            if (false == UnitTests.m_fullTestsFinished)
+            {
+                UnitTests.RunFullTests();
+                UnitTests.m_fullTestsFinished = true;
+            }
+
             // fuck CORS for now: Response.Headers.Add("Access-Control-Allow-Origin", "*");
             System.Threading.Semaphore s = new System.Threading.Semaphore(1, 1, "COPS"); s.WaitOne();
             try
