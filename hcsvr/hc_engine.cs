@@ -335,6 +335,29 @@ public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
             Debug.Assert(false); // hey why remove what isn't there?
         }
 
+        // Sometimes I just know I want to move one spot to another, perhaps for building test cases.
+        public  void BruteForceMove(int q1, int r1, int q2, int r2)
+        {
+            // I suppose I demand there's a piece there.
+            BoardLocation loc = new BoardLocation(q1, r1);
+            var piece = AnyoneThere(loc);
+            Debug.Assert(piece != null);
+            this.Remove(piece);
+
+            // If anyone's at the destination, I suppose we move that piece to the sideline.
+            BoardLocation loc2 = new BoardLocation(q2, r2);
+            var pieceDest = AnyoneThere(loc2);
+            if (null != pieceDest)
+            {
+                this.Remove(pieceDest);
+                SidelinedPieces.Add(pieceDest);
+            }
+
+            // and shove this piece to that spot.
+            PlacedPiece pp = new PlacedPiece(piece.PieceType, piece.Color, q2, r2);
+            this.Add(pp);
+        }
+
         public List<PlacedPiece> PlacedPiecesThisColor(ColorsEnum col)
         {
             List<PlacedPiece> myCol = new List<PlacedPiece>();
@@ -439,12 +462,10 @@ public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
                 PlacedPiece p = AnyoneThere(b);
                 if (null != p)          // there's a piece
                 {
-                    if (p.PieceType != PiecesEnum.Pawn)
-                        continue;
-
-                    // it's a pawn. are two same-color pawns next to this pawn?
-                    if (true == HasTwoSameColorPawnNeighbors(p))
-                        continue;
+                    // if it's a pawn. are two same-color pawns next to this pawn?
+                    if (p.PieceType == PiecesEnum.Pawn)
+                        if (true == HasTwoSameColorPawnNeighbors(p))
+                            continue;
                 }
 
                 realOptions.Add(b);
@@ -476,15 +497,25 @@ public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
             {
                 // Make a hypothetical board
                 Board bHypothetical = new Board(this);       // clone meeeee
-                bHypothetical.Remove(p);     // take me off.
+                bHypothetical.Remove(p);     // take me off. 
                 if (null != bHypothetical.AnyoneThere(bl))
                     bHypothetical.Remove(bHypothetical.AnyoneThere(bl));
                 bHypothetical.Add(new PlacedPiece(p, bl));   // put me on at the destination
 
                 // I wanna see this board.
                 Program.ShowBoard(bHypothetical);
+                Program.ShowTextBoard(bHypothetical);
 
                 // WHAT IF THE KING MOVES INTO CHECK BUT ALSO MOVES TO 0,0 FOR THE WIN??
+
+                // And 
+                if (null == bHypothetical.FindPiece(PiecesEnum.King, ColorsEnum.Black))
+                    Console.WriteLine("Black King missing from consideration in this check whether someone's in check.");
+                if (null == bHypothetical.FindPiece(PiecesEnum.King, ColorsEnum.White))
+                    Console.WriteLine("White King missing from consideration in this check whether someone's in check.");
+                if (null == bHypothetical.FindPiece(PiecesEnum.King, ColorsEnum.Tan))
+                    Console.WriteLine("Tan King missing from consideration in this check whether someone's in check.");
+
                 if (false == bHypothetical.InCheck(p.Color)) // see if i'm in check
                     realOptions.Add(bl);
             }
@@ -542,7 +573,8 @@ public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
         }
 
         // a shallow check sees where i can reach without regard to whetehr it puts me into check doing it.
-        // (a king can't end up in a position where i can reach it, even if me doing so is prevented cuz the move would put me in check)
+        // (a king can't end up in a position where i can reach it, 
+        // even if me doing so is prevented cuz the move would put me in check)
 
         BoardLocationList WhereCanIReach(PlacedPiece p, bool fShallowCheck = true)
         {
@@ -888,6 +920,12 @@ public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
 
                 case PiecesEnum.King:
                     {
+                        // I SPECULATE THAT A KING'S MOVE MAYBE UM USES DEEP CHECK NOT SHALLOW CHECK?
+                        // naw, no change. i have to visualize better.
+                        // BoardLocationList spotsDeepCheck = WhereCanIReach(p, false); 
+                        // Mar 2020: To prevent king from moving into check, I am calling with true, for deep check... could be issues with this change!
+                        BoardLocationList spotsDeepCheck = WhereCanIReach(p, true);
+
                         BoardLocationList spots = WhereCanIReach(p);
                         // did i just land on some unfortunate piece? cuz those are events.
                         foreach (BoardLocation spot in spots)
