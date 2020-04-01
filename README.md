@@ -1,15 +1,6 @@
 # Hexagonal Chess Online
 
-Hexagonal Chess on ASP.NET Core 3.0
-
-Play now at https://HexagonalChess.Online/
-
-To see pieces, click **Settings**, and think up a game ID or get one your 2 friends want to use. 
-
-To play two-player, first set yourself as a third color and remove their pieces to limbo spots.
-
-During your turn, you can move pieces around. If you want to reset to the start of your turn,
-click **Oops**. When you've made your move, click **That's mahmove**.
+Hexagonal Chess on ASP.NET Core 3.1 or so.
 
 ## Game Rules
 
@@ -25,27 +16,15 @@ A player loses when their turn begins with them in checkmate. The player who fir
 
 You can also win by getting your king down the portal.
 
-## Handling pieces and moves
-
-Click any piece to see spots that can be impacted by any of its moves.
-
-To move a piece, click it, drag it to the destionation, and release it.
-
 ## Quirks you must deal with until I fix them
-
-You can move your pieces anywhere at any time. Don't do it during other player turns.
-
-It's up to you to assure the turn you choose is valid.
 
 To swap king and queen, move one piece to a neutral spot first.
 
-The "waiting for white to move" detail is probably wrong. You just have to know it's your turn, perhaps because your opponent told you.
-
 ## Differences from meatspace rules
 
-You can play the same game as you might play face-to-face, because the Possible Move Indicators are not _enforced_.
+A pawn that touches two other pawns can't be attacked.
 
-Pawns have no special moves. Reaching the opposite side of the board with a pawn has no special outcome.
+Reaching the opposite side of the board with a pawn has no special outcome.
 
 You can't add pieces (such as two-queen in the Olympia variant, or extra pawns in limbo as a handicap).
 
