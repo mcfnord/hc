@@ -102,34 +102,54 @@ namespace hcsv2020.Controllers
                 return;
             HexC.Board b = new HexC.Board();
 
+
+
+/*
+            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Black, -2, -3));
+//            b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Tan, -1, 4));
+            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Tan, -3, 5));
+            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.White, 5, -3));
+            b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.Black, 0, -1));
+            b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.White, 1, 0));
+//            b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Tan, 0, 1));
+*/
+
+
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.Black, -1, -4));
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.Black, -4, -1));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Black, -1, -3));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Black, -2, -2));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Black, -3, -1));
-            b.Add(new PlacedPiece(PiecesEnum.Queen, ColorsEnum.Black, -3, -2));
-            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Black, -2, -3));
             b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.Black, -1, -2));
             b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.Black, -1, -1));
             b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.Black, -2, -1));
+            b.Add(new PlacedPiece(PiecesEnum.Queen, ColorsEnum.Black, -3, -2));
+            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Black, -2, -3));
+
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.Tan, -4, 5));
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.Tan, -1, 5));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Tan, -3, 4));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Tan, -2, 4));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Tan, -1, 4));
+            b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.Tan, -2, 3));
+            b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.Tan, -1, 3));
+            b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.Tan, -1, 2));
             b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Tan, -3, 5));
+            b.Add(new PlacedPiece(PiecesEnum.Queen, ColorsEnum.Tan, -2, 5));
+
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.White, 5, -4));
-            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.White, 5, -3));
-            b.Add(new PlacedPiece(PiecesEnum.Queen, ColorsEnum.White, 5, -2));
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.White, 5, -1));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.White, 4, -3));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.White, 4, -2));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.White, 4, -1));
-            b.Add(new Piece(PiecesEnum.Castle, ColorsEnum.White)); // I have a castle on the sidelines.
-            b.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Tan)); // I have a castle on the sidelines.
+            b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -2));
+            b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -1));
+            b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 2, -1));
+            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.White, 5, -3));
+            b.Add(new PlacedPiece(PiecesEnum.Queen, ColorsEnum.White, 5, -2));
 
             m_allBoards.Add(gameId, b);
-            m_yourTurn.Add(gameId, ColorsEnum.Black); // black goes first
+            m_yourTurn.Add(gameId, ColorsEnum.Black); // black goes first  
 
         }
     }
@@ -277,11 +297,11 @@ b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
             }
 
             foreach (var p in b1.SidelinedPieces)
-                if (false == b2.SidelinedPieces.Contains(p))
+                if (false == b2.SidelinedPieces.ContainsThePiece(p.PieceType, p.Color))
                     return false;
 
             foreach (var p in b2.SidelinedPieces)
-                if (false == b1.SidelinedPieces.Contains(p))
+                if (false == b1.SidelinedPieces.ContainsThePiece(p.PieceType, p.Color))
                     return false;
 
             return true;
@@ -371,8 +391,6 @@ b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
 
         protected static bool CanFindOptionResultingInNewBoard(HexC.ColorsEnum col, Board bFrom, Board bTo)
         {
-            ShowTextBoard(bTo);
-
             foreach (var piece in bFrom.PlacedPiecesThisColor(col))
             {
                 var options = bFrom.WhatCanICauseWithDoo(piece);
@@ -392,21 +410,21 @@ b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
                             case EventTypeEnum.Remove:
                                 bThisBoard.Remove(anEvent.Regarding);
                                 break;
+                                 
                         }
                     }
+
                     // Does this new board match the desired outcome board?
                     if (BoardsMatch(bThisBoard, bTo))
                     {
                         // FOR DEBUGGING PURPOSES, RE-CALL THE WHAT'S=POSSIBLE FUNCTION THAT HAS RESULTED
                         // IN THE CONCLUSION THIS MOVE IS VALID.
-                        var debugOptions = bFrom.WhatCanICauseWithDoo(piece);
+                        //var debugOptions = bFrom.WhatCanICauseWithDoo(piece);
                         // END DEBUGGING DIAGNOSTIC
 
                         return true;
                     }
-
                     // Console.WriteLine("Boards do NOT match:");
-                    ShowTextBoard(bThisBoard);
                 }
             }
             return false;
