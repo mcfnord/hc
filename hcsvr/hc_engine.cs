@@ -190,7 +190,17 @@ namespace HexC
 
     public class PieceList : List<Piece>
     {
-        /*
+        public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
+        {
+            foreach (var item in this)
+            {
+                if (item.PieceType == pt)
+                    if (item.Color == c)
+                        return true;
+            }
+            return false;
+        }
+
         public void RemoveThePiece(PiecesEnum pt, ColorsEnum c)
         {
             foreach (var item in this)
@@ -201,21 +211,8 @@ namespace HexC
                         this.Remove(item);
                         return;
                     }
-
-                Debug.Assert(false); // why would we ask for a piece that isn't in this set?
             }
-        }
-        */
-
-public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
-        {
-            foreach (var item in this)
-            {
-                if (item.PieceType == pt)
-                    if (item.Color == c)
-                        return true;
-            }
-            return false;
+            Debug.Assert(false); // why would we ask for a piece that isn't in this set?
         }
     }
 
@@ -268,7 +265,7 @@ public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
     {
         // MEMBERS
         List<PlacedPiece> placedPieces = new List<PlacedPiece>();
-        PieceList sidelined = new PieceList();
+//        PieceList sidelined = new PieceList();
 
         BoardLocationList highlightedSpots = new BoardLocationList(); // purely cosmetic, only used by Windows Form
         public BoardLocationList HighlightedSpots { get { return highlightedSpots; } }
@@ -276,7 +273,55 @@ public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
 
         // PROPERTIES
         public List<PlacedPiece> PlacedPieces { get { return placedPieces; } }
-        public PieceList SidelinedPieces { get { return sidelined; } }
+        public PieceList SidelinedPieces 
+        { 
+            get 
+            {   // given the standard board, infer that any piece not on the board is sidelined.
+                // this is a hack for simplicity and stability.
+                PieceList ret = new PieceList();
+
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.King, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Queen, ColorsEnum.Black));
+
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.King, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Queen, ColorsEnum.Tan));
+
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.King, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Queen, ColorsEnum.White));
+
+                foreach (var piece in placedPieces)
+                {
+                    // for each, say, white pawn found on the board, remove one white pawn from the sidelined piece list
+                    if (ret.ContainsThePiece(piece.PieceType, piece.Color))
+                        ret.RemoveThePiece(piece.PieceType, piece.Color);
+                }
+                return ret;
+            }
+        }
 
         // CONSTRUCTORS
         public Board() { }
@@ -286,16 +331,19 @@ public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
             {
                 placedPieces.Add(p);
             }
+            /* sidelined is inferred now
             foreach (Piece p in cloneMe.sidelined)
             {
                 sidelined.Add(p);
             }
+            */
         }
 
         // METHODS
         public void Add(Piece p) // sidelined piece on board for color
         {
-            sidelined.Add(p);
+            // this shouldn't do anything anymore. because sidelined is automated now.
+//            sidelined.Add(p);
         }
 
         public void Add(PlacedPiece p)
@@ -799,7 +847,7 @@ public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
             {
                 events.Add(new PieceEvent(deadp, EventTypeEnum.Remove));
                 if (null != this.AnyoneThere(new BoardLocation(0, 0))) // u blockin my portal?
-                    if (sidelined.ContainsThePiece(deadp.PieceType, p.Color))
+                    if (SidelinedPieces.ContainsThePiece(deadp.PieceType, p.Color))
                     {
                         events.Add(new PieceEvent(new PlacedPiece(deadp.PieceType, p.Color, 0, 0), EventTypeEnum.Add));
                         // we don't remove it here!                    sidelined.RemoveThePiece (deadp.PieceType, p.Color);
