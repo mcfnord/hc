@@ -1,6 +1,6 @@
 # Hexagonal Chess Online
 
-Hexagonal Chess on ASP.NET Core 3.1 or so.
+Hexagonal Chess on ASP.NET Core 3.1 or so. This repository contains server code and a text-based client. 
 
 ## Winning
 
@@ -24,9 +24,9 @@ To swap king and queen, move one piece to a neutral spot first.
 
 # Join us
 
+Find outdated browser code here: https://github.com/oinke/hexchess-www
+
 This code has been prepared by the Git Blox Bois. We welcome new players and contributors. 
-This repository contains the server code. You can also see the browser code here:
-https://github.com/oinke/hexchess-www
 
 The Git Blox Bois are an international anarchist hacker collective that opposes the patriarchy
 and encourages gender and sexual minorities to contribute and play. You might find us here:
