@@ -280,38 +280,38 @@ namespace HexC
                 // this is a hack for simplicity and stability.
                 PieceList ret = new PieceList();
 
-                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Black));
-                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Black));
-                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Black));
-                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Black));
-                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Black));
-                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Black));
-                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Black));
-                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Black));
                 ret.Add(new Piece(PiecesEnum.King, ColorsEnum.Black));
                 ret.Add(new Piece(PiecesEnum.Queen, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Black));
 
-                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Tan));
-                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Tan));
-                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Tan));
-                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Tan));
-                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Tan));
-                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Tan));
-                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Tan));
-                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Tan));
                 ret.Add(new Piece(PiecesEnum.King, ColorsEnum.Tan));
                 ret.Add(new Piece(PiecesEnum.Queen, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Tan));
 
-                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.White));
-                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.White));
-                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.White));
-                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.White));
-                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.White));
-                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.White));
-                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.White));
-                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.White));
                 ret.Add(new Piece(PiecesEnum.King, ColorsEnum.White));
                 ret.Add(new Piece(PiecesEnum.Queen, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.White));
 
                 foreach (var piece in placedPieces)
                 {
@@ -846,7 +846,7 @@ namespace HexC
             if (null != deadp)
             {
                 events.Add(new PieceEvent(deadp, EventTypeEnum.Remove));
-                if (null != this.AnyoneThere(new BoardLocation(0, 0))) // u blockin my portal?
+                if (null == this.AnyoneThere(new BoardLocation(0, 0))) // u blockin my portal?
                     if (SidelinedPieces.ContainsThePiece(deadp.PieceType, p.Color))
                     {
                         events.Add(new PieceEvent(new PlacedPiece(deadp.PieceType, p.Color, 0, 0), EventTypeEnum.Add));
