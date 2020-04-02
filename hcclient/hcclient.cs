@@ -141,15 +141,24 @@ namespace HexCClient
 
                 Console.WriteLine(m_whoseTurnItIs.Replace("\"", "") + "'s turn.");
 
-                // Show captured pieces across the top
-                var sidelined = b.SidelinedPieces;
-                for (int iPieceSlot = 0; iPieceSlot < sidelined.Count; iPieceSlot++)
+                // Show captured pieces across the top, if any
+
+                if (b.SidelinedPieces.Count > 0)
                 {
-                    SetPieceColor(sidelined[iPieceSlot].Color);
-                    if (iSlotOfSidelinedPiece == iPieceSlot)
-                        Console.BackgroundColor = ConsoleColor.DarkRed;
-                    Console.Write(sidelined[iPieceSlot].ToChar());
-                    Console.BackgroundColor = ConsoleColor.Black;
+                    ColorsEnum col = b.SidelinedPieces[0].Color;
+                    for (int iPieceSlot = 0; iPieceSlot < b.SidelinedPieces.Count; iPieceSlot++)
+                    {
+                        SetPieceColor(b.SidelinedPieces[iPieceSlot].Color);
+                        if (iSlotOfSidelinedPiece == iPieceSlot)
+                            Console.BackgroundColor = ConsoleColor.DarkRed;
+                        if (b.SidelinedPieces[iPieceSlot].Color != col)
+                        {
+                            col = b.SidelinedPieces[iPieceSlot].Color;
+                            Console.WriteLine();
+                        }
+                        Console.Write(b.SidelinedPieces[iPieceSlot].ToChar());
+                        Console.BackgroundColor = ConsoleColor.Black;
+                    }
                 }
                 Console.WriteLine();
                 Console.WriteLine();
@@ -164,10 +173,6 @@ namespace HexCClient
                 {
                     Console.WriteLine($"b.Add(new PlacedPiece(PiecesEnum.{piece.PieceType}, ColorsEnum.{piece.Color}, {piece.Location.Q}, {piece.Location.R}));");
                 }
-                foreach(var piece in b.SidelinedPieces)
-                {
-                    // wrecklessly omitted for now
-                }
 
                 ConsoleKeyInfo cki = Console.ReadKey();
                 switch (cki.KeyChar.ToString().ToLower()[0])
@@ -175,10 +180,19 @@ namespace HexCClient
                     case 'f':
                         {
                             var whoseTurnBefore = await client.GetStringAsync($"http://localhost/Board/WhoseTurn?gameId={args[0]}");
+
+                            // Listen up: If your turn STARTED with a piece of your color in the portal,
+                            // and it's still there, then i will take it out for you.
+                            HexC.ColorsEnum whose = FromString.ColorFromString(whoseTurnBefore.Replace("\"", ""));
+                            var centerPiece = turnStartBoard.AnyoneThere(new BoardLocation(0, 0));
+                            if (null != centerPiece)
+                                if (centerPiece.Color == whose)
+                                    b.Remove(centerPiece);
+
                             PrettyJsonBoard pjb = new PrettyJsonBoard(b.PlacedPieces, b.SidelinedPieces);
                             HttpContent content = new StringContent(JsonConvert.SerializeObject(pjb), System.Text.Encoding.UTF8, "application/json");
                             await client.PostAsync($"http://localhost/Board/Moves?gameId={args[0]}", content);
-                            // ok, the event occurred... now ask whose turn it is!
+                            // ok, the event occurred... now ask whose turn it is! That's how we know if the turn was accepted! Clever, no?
                             m_whoseTurnItIs = await client.GetStringAsync($"http://localhost/Board/WhoseTurn?gameId={args[0]}");
                             if (whoseTurnBefore == m_whoseTurnItIs)
                                 goto case 'r'; // failed. just reset the turn.
@@ -186,12 +200,12 @@ namespace HexCClient
                             break;
                         }
                     case 'r': iSlotOfSidelinedPiece = -1; b = new Board(turnStartBoard); break;
-                    case '1': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, -1, 1); break;
-                    case '3': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, 0, 1); break;
-                    case '4': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, -1, 0); break;
-                    case '6': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, 1, 0); break;
-                    case '7': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, 0, -1); break;
-                    case '9': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, 1, -1); break;
+                    case '1': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, -1,  1); break;
+                    case '3': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor,  0,  1); break;
+                    case '4': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, -1,  0); break;
+                    case '6': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor,  1,  0); break;
+                    case '7': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor,  0, -1); break;
+                    case '9': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor,  1, -1); break;
                     case '*': // move piece to sideline
                         {
                             iSlotOfSidelinedPiece = -1;
@@ -227,7 +241,7 @@ namespace HexCClient
 
                             if (null == b.AnyoneThere(bl))
                             {
-                                var piece = sidelined[iSlotOfSidelinedPiece];
+                                var piece = b.SidelinedPieces[iSlotOfSidelinedPiece];
                                 b.SidelinedPieces.Remove(piece);
                                 PlacedPiece pp = new PlacedPiece(piece.PieceType, piece.Color, 0, 0);
                                 b.Add(pp);
@@ -255,6 +269,14 @@ namespace HexCClient
 
                                 b.Remove(pp_dest);
                                 b.SidelinedPieces.Add(pp_dest);
+
+                                // is the portal empty?
+                                // and if it's empty, do i have any sidelined pieces of this type to relocate to the portal?
+                                if(null == b.AnyoneThere(new BoardLocation(0, 0)))
+                                {
+                                    if (b.SidelinedPieces.ContainsThePiece(pp_dest.PieceType, pp.Color))
+                                        b.Add(new PlacedPiece(pp_dest.PieceType, pp.Color, 0, 0));
+                                }
                             }
                             b.Remove(pp);
                             PlacedPiece ppNew = new PlacedPiece(pp, cursor);
