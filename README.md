@@ -28,8 +28,7 @@ Find outdated browser code here: https://github.com/oinke/hexchess-www
 
 This code has been prepared by the Git Blox Bois. We welcome new players and contributors. 
 
-The Git Blox Bois are an international anarchist hacker collective that opposes the patriarchy
-and encourages gender and sexual minorities to contribute and play. You might find us here:
+The Git Blox Bois are an international anarchist hacker collective welcome to all. You might find us here:
 https://hangouts.google.com/group/wxGfxZPxbj2pOy0M2
 
 https://blogs.scientificamerican.com/beautiful-minds/the-personality-of-political-correctness/
