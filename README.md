@@ -5,7 +5,7 @@ Hexagonal Chess on ASP.NET Core 3.1 or so. This repository contains server code 
 ## Winning
 
 * A player loses when their turn begins with them in checkmate. The player who first caused a checkmate state wins. 
-* You can also win by getting your king down the portal.
+* You can also win by getting your king to the portal.
 
 ## Special moves
 
@@ -28,9 +28,6 @@ To swap king and queen, move one piece to a neutral spot first.
 
 Find outdated browser code here: https://github.com/oinke/hexchess-www
 
-This code has been prepared by the Git Blox Bois. We welcome new players and contributors. 
-
-The Git Blox Bois are an international anarchist hacker collective welcome to all. You might find us here:
-https://hangouts.google.com/group/wxGfxZPxbj2pOy0M2
+This code has been prepared by the Git Blox Bois, an international anarchist hacker collective. Join us: https://hangouts.google.com/group/wxGfxZPxbj2pOy0M2
 
 https://blogs.scientificamerican.com/beautiful-minds/the-personality-of-political-correctness/
