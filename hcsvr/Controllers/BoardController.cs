@@ -103,18 +103,18 @@ namespace hcsv2020.Controllers
             HexC.Board b = new HexC.Board();
 
 
-
-/*
+            //            b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.White, 4, -3));
+            //            b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.White, 2, 1));
+            b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 2, -1));
+            b.Add(new PlacedPiece(PiecesEnum.Queen, ColorsEnum.Black, 0, 0));
             b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Black, -2, -3));
-//            b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Tan, -1, 4));
-            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Tan, -3, 5));
             b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.White, 5, -3));
-            b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.Black, 0, -1));
-            b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.White, 1, 0));
-//            b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Tan, 0, 1));
-*/
+            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Tan, -2, 5));
 
+            m_allBoards.Add(gameId, b);
+            m_yourTurn.Add(gameId, ColorsEnum.White);
 
+            /*
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.Black, -1, -4));
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.Black, -4, -1));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Black, -1, -3));
@@ -147,9 +147,10 @@ namespace hcsv2020.Controllers
             b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 2, -1));
             b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.White, 5, -3));
             b.Add(new PlacedPiece(PiecesEnum.Queen, ColorsEnum.White, 5, -2));
-
             m_allBoards.Add(gameId, b);
             m_yourTurn.Add(gameId, ColorsEnum.Black); // black goes first  
+            */
+
 
         }
     }
@@ -391,6 +392,11 @@ b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
 
         protected static bool CanFindOptionResultingInNewBoard(HexC.ColorsEnum col, Board bFrom, Board bTo)
         {
+
+            Console.WriteLine();
+            Console.WriteLine("Target Board:");
+            ShowTextBoard(bTo);
+
             foreach (var piece in bFrom.PlacedPiecesThisColor(col))
             {
                 var options = bFrom.WhatCanICauseWithDoo(piece);
@@ -413,6 +419,9 @@ b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
                                  
                         }
                     }
+
+                    // What are we lookin at?
+                    ShowTextBoard(bThisBoard);
 
                     // Does this new board match the desired outcome board?
                     if (BoardsMatch(bThisBoard, bTo))
@@ -448,9 +457,18 @@ b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
                 foreach (Spot spot in pieces)
                 {
                     if (spot.Q == 99)
-                        bProposed.Add(new Piece(FromString.PieceFromString(spot.Piece), FromString.ColorFromString(spot.Color)));
+                    {
+                        // my client shoves sideline details at me in Q,R = 99, but i infer sideline now.
+                        // bProposed.Add(new Piece(FromString.PieceFromString(spot.Piece), FromString.ColorFromString(spot.Color)));
+                    }
                     else
-                        bProposed.Add(new PlacedPiece(FromString.PieceFromString(spot.Piece), FromString.ColorFromString(spot.Color), spot.Q, spot.R));
+                    {
+                        var piece = new PlacedPiece(FromString.PieceFromString(spot.Piece), FromString.ColorFromString(spot.Color), spot.Q, spot.R);
+                        if (null == bProposed.AnyoneThere(piece.Location)) // don't tase me bro
+                            bProposed.Add(piece);
+                        else
+                            Debug.Assert(false);// why did this client shove two pieces in one spot at me?
+                    }
                 }
 
                 // Determine if this proposed board is among the outcomes considered valid for this player on the current board
