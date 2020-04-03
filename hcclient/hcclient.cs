@@ -279,8 +279,11 @@ namespace HexCClient
                                 }
                             }
                             b.Remove(pp);
-                            PlacedPiece ppNew = new PlacedPiece(pp, cursor);
-                            b.Add(ppNew);
+                            if (false == cursor.IsPortal)
+                            {
+                                PlacedPiece ppNew = new PlacedPiece(pp, cursor);
+                                b.Add(ppNew);
+                            }
 
                             selected = null;
                         }
