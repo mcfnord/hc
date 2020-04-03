@@ -846,10 +846,12 @@ namespace HexC
             if (null != deadp)
             {
                 events.Add(new PieceEvent(deadp, EventTypeEnum.Remove));
-                if (null == this.AnyoneThere(new BoardLocation(0, 0))) // u blockin my portal?
-                    if (SidelinedPieces.ContainsThePiece(deadp.PieceType, p.Color))
+
+                if ((null == this.AnyoneThere(new BoardLocation(0, 0))) ||  // if portal is empty,
+                    (deadp.Location.IsPortal))                              // or if portal is full and i'm attacking that piece in the portal
+                    if (SidelinedPieces.ContainsThePiece(deadp.PieceType, p.Color)) // and if a piece of mine of that type has perished previously
                     {
-                        events.Add(new PieceEvent(new PlacedPiece(deadp.PieceType, p.Color, 0, 0), EventTypeEnum.Add));
+                        events.Add(new PieceEvent(new PlacedPiece(deadp.PieceType, p.Color, 0, 0), EventTypeEnum.Add)); // then add to portal
                         // we don't remove it here!                    sidelined.RemoveThePiece (deadp.PieceType, p.Color);
                     }
             }
@@ -880,8 +882,11 @@ namespace HexC
             if (spot.Q != 0 || spot.R != 0 || p.PieceType == PiecesEnum.King) // nobody EXCEPT A KING gets to jump down the hole.
                 Console.WriteLine("Debug.Assert due to this problem, but for now just console log.");
 
-            PlacedPiece pp = new PlacedPiece(p, spot); // constructor clones me but to a new spot
-            events.Add(new PieceEvent(pp, EventTypeEnum.Add)); // I appear at this spot
+            if (false == spot.IsPortal) // we add from sideline if the jump resulted in that, but if jump is attack then piece falls down portal with victim
+            {
+                PlacedPiece pp = new PlacedPiece(p, spot); // constructor clones me but to a new spot
+                events.Add(new PieceEvent(pp, EventTypeEnum.Add)); // I appear at this spot
+            }
 
             return events;
         }
