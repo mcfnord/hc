@@ -1,6 +1,6 @@
 # Hexagonal Chess Online
 
-Hexagonal Chess on ASP.NET Core 3.1 or so. This repository contains server code and a text-based client. 
+Hexagonal Chess on ASP.NET Core 3.1 or so. This repository contains server code, a text-based client, and a draft of an AI player.
 
 ## Winning
 
