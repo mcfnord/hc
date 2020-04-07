@@ -25,7 +25,7 @@ namespace HexC
 {
     class MyDebug
     {
-        static bool fNonStop = true;
+        static bool fNonStop = false;
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public static void Assert(bool assertion)
@@ -452,7 +452,9 @@ namespace HexC
             return null;
         }
 
-        BoardLocationList YankSpotsThatArentBoardSpots(BoardLocationList options, bool isAKing = false)
+        // a king can enter the portal if it's empty
+        // any piece can enter portal (and fall in) if it's occupied by a different color piece.
+        BoardLocationList YankSpotsThatArentBoardSpots(BoardLocationList options, bool canEnterPortal = false)
         {
             BoardLocationList realOptions = new BoardLocationList();
 
@@ -461,8 +463,8 @@ namespace HexC
                 if (b.IsValidLocation())
                 {
                     if (b.IsPortal)
-                        if (false == isAKing)
-                            continue; // zero zero is only valid for a king.
+                        if (false == canEnterPortal) 
+                            continue; 
 
                     realOptions.Add(b);
                 }
@@ -711,8 +713,18 @@ namespace HexC
                         {
                             foreach (BoardLocation l in ll)
                             {
+                                // if the run reaches the portal, 
+                                // and the portal is empty, 
+                                // or contains my own piece, 
+                                // then the run is over!
                                 if (l.IsPortal)
-                                    break; // run is over!
+                                {
+                                    var portalPiece = AnyoneThere(l);
+                                    if (null == portalPiece)
+                                        break;
+                                    if (portalPiece.Color == p.Color)
+                                        break;
+                                }
 
                                 PlacedPiece pThere = AnyoneThere(l);
                                 if (null == pThere)
@@ -728,9 +740,21 @@ namespace HexC
                             }
                         }
 
-                        options = YankSpotsThatArentBoardSpots(options);
+                        bool canEnterPortal = false;
+                        var portalPieceBro = AnyoneThere(new BoardLocation(0, 0));
+                        if (null == portalPieceBro)
+                        {
+                            if (p.PieceType == PiecesEnum.King) // a king can enter an empty portal
+                                canEnterPortal = true;
+                        }
+                        else
+                        {
+                            // any piece can enter the portal (and fall in) if a different-color piece occupies it
+                            if (p.Color != portalPieceBro.Color)
+                                canEnterPortal = true;
+                        }
+                        options = YankSpotsThatArentBoardSpots(options, canEnterPortal);
                         options = YankSpotsOccupiedByProtectedPawns(options);
-
 
                         if (PiecesEnum.Castle == p.PieceType)
                         {
