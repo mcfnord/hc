@@ -128,7 +128,7 @@ namespace HexCClient
             // loop as a user interface by showing the board, and commands for the newbies:
             BoardLocation cursor = new BoardLocation(0, 0);
             BoardLocation selected = null;
-            int iSlotOfSidelinedPiece = -1;
+//            int iSlotOfSidelinedPiece = -1;
 
             while (true)
             {
@@ -140,6 +140,7 @@ namespace HexCClient
                 SetPieceColor(ColorsEnum.White); Console.WriteLine("White");
 
                 Console.WriteLine(m_whoseTurnItIs.Replace("\"", "") + "'s turn.");
+                Console.WriteLine();
 
                 // Show captured pieces across the top, if any
 
@@ -149,8 +150,8 @@ namespace HexCClient
                     for (int iPieceSlot = 0; iPieceSlot < b.SidelinedPieces.Count; iPieceSlot++)
                     {
                         SetPieceColor(b.SidelinedPieces[iPieceSlot].Color);
-                        if (iSlotOfSidelinedPiece == iPieceSlot)
-                            Console.BackgroundColor = ConsoleColor.DarkRed;
+//                        if (iSlotOfSidelinedPiece == iPieceSlot)
+//                            Console.BackgroundColor = ConsoleColor.DarkRed;
                         if (b.SidelinedPieces[iPieceSlot].Color != col)
                         {
                             col = b.SidelinedPieces[iPieceSlot].Color;
@@ -166,7 +167,7 @@ namespace HexCClient
                 ShowTextBoard(b, cursor); // cursor could be null
 
                 Console.WriteLine();
-                Console.WriteLine("134679:Move Cursor\r\n5:Select\r\n-:Sidelined pieces\r\nR:Reset to turn start\r\nF:Finish turn");
+                Console.WriteLine("134679:Move Cursor\r\n5:Select\r\nR:Reset to turn start\r\nF:Finish turn");
 
                 Console.WriteLine("\r\nYou can create this board as a test case:\r\n");
                 foreach (var piece in b.PlacedPieces)
@@ -199,22 +200,22 @@ namespace HexCClient
                             turnStartBoard = new Board(b);  // clone it! cuz it's a new turn!
                             break;
                         }
-                    case 'r': iSlotOfSidelinedPiece = -1; b = new Board(turnStartBoard); break;
-                    case '1': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, -1,  1); break;
-                    case '3': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor,  0,  1); break;
-                    case '4': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor, -1,  0); break;
-                    case '6': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor,  1,  0); break;
-                    case '7': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor,  0, -1); break;
-                    case '9': iSlotOfSidelinedPiece = -1; cursor = ShiftedSpot(cursor,  1, -1); break;
+                    case 'r': b = new Board(turnStartBoard); break;
+                    case '1': cursor = ShiftedSpot(cursor, -1,  1); break;
+                    case '3': cursor = ShiftedSpot(cursor,  0,  1); break;
+                    case '4': cursor = ShiftedSpot(cursor, -1,  0); break;
+                    case '6': cursor = ShiftedSpot(cursor,  1,  0); break;
+                    case '7': cursor = ShiftedSpot(cursor,  0, -1); break;
+                    case '9': cursor = ShiftedSpot(cursor,  1, -1); break;
                     case '*': // move piece to sideline
                         {
-                            iSlotOfSidelinedPiece = -1;
                             var piece = b.AnyoneThere(cursor);
                             b.Remove(piece);
                             b.SidelinedPieces.Add(piece);
                             break;
                         }
 
+                        /*
                     case '-':
                         {
                             if (-1 == iSlotOfSidelinedPiece)
@@ -232,8 +233,10 @@ namespace HexCClient
                             }
                         }
                         break;
+                        */
 
                     case '5':
+                        /*
                         if (-1 != iSlotOfSidelinedPiece)
                         {
                             // if nobody in center, put this piece there.
@@ -250,6 +253,7 @@ namespace HexCClient
                             }
                         }
                         else // did we previously select a spot?
+                        */
                         if (null == selected)
                         {
                             // none previously selected. just remember this spot as the selection.
@@ -259,6 +263,7 @@ namespace HexCClient
                         else
                         {
                             PlacedPiece pp = b.AnyoneThere(selected); // we selected this one earlier
+                            System.Diagnostics.Debug.Assert(pp != null);
 
                             PlacedPiece pp_dest = b.AnyoneThere(cursor);
                             if (null != pp_dest)
