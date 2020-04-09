@@ -18,7 +18,7 @@ Hexagonal Chess on ASP.NET Core 3.1 or so. This repository contains server code,
 * If you enter your turn with your piece in the portal, but you don't move it out of that spot, then it's lost again.
 * If you attack an opponent piece that occcupies the portal, both pieces are lost. If you've lost the kind of piece that you just captured, your own piece appears in the portal.
 * Only a king can land on an unoccupied portal (and win the game).
-* A castle or queen cannot pass straight through the portal, but an unoccupied portal is a passage for pieces that require a path.
+* A castle or queen cannot pass straight through the portal, and a portal is not a passage for pieces that require a path (queen's special move and pawn's attack).
 
 # Join us
 
