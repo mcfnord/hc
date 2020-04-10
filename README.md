@@ -5,12 +5,13 @@ Hexagonal Chess on ASP.NET Core 3.1 or so. This repository contains server code,
 ## Winning
 
 * A player loses when their turn begins with them in checkmate. The player who first caused a checkmate state wins. 
+* A player loses when their king is captured. This is different from checkmate. The capturing player wins.
 * You can also win by getting your king to the portal.
 
 ## Special moves
 
 * If your king and queen touch, your turn can begin by swapping them.
-* A pawn that touches two other pawns of the same color can't be attacked.
+* A pawn that touches two other pawns of the same color can't be captured.
 
 ### Portal
 
