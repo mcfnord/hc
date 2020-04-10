@@ -454,7 +454,7 @@ namespace HexC
 
         // a king can enter the portal if it's empty
         // any piece can enter portal (and fall in) if it's occupied by a different color piece.
-        BoardLocationList YankSpotsThatArentBoardSpots(BoardLocationList options, bool canEnterPortal = false)
+        BoardLocationList YankSpotsThatArentBoardSpots(BoardLocationList options, bool canEnterPortal) //  = false)
         {
             BoardLocationList realOptions = new BoardLocationList();
 
@@ -645,12 +645,26 @@ namespace HexC
 
         BoardLocationList WhereCanIReach(PlacedPiece p, bool fShallowCheck = true)
         {
+            bool canEnterPortal = false;
+            var portalPieceBro = AnyoneThere(new BoardLocation(0, 0));
+            if (null == portalPieceBro)
+            {
+                if (p.PieceType == PiecesEnum.King) // a king can enter an empty portal
+                    canEnterPortal = true;
+            }
+            else
+            {
+                // any piece can enter the portal (and fall in) if a different-color piece occupies it
+                if (p.Color != portalPieceBro.Color)
+                    canEnterPortal = true;
+            }
+
             switch (p.PieceType)
             {
                 case PiecesEnum.Elephant:
                     {
                         BoardLocationList options = KnightStatic.CouldGoIfOmnipotent(p.Location);
-                        options = YankSpotsThatArentBoardSpots(options);
+                        options = YankSpotsThatArentBoardSpots(options, canEnterPortal);
                         options = YankSpotsOccupiedByThisColor(options, p.Color);
                         options = YankSpotsOccupiedByProtectedPawns(options);
                         if (fShallowCheck)
@@ -676,7 +690,7 @@ namespace HexC
                 case PiecesEnum.Pawn:
                     {
                         BoardLocationList stepSpots = PawnStatic.CouldGoIfOmnipotent(p.Location);
-                        stepSpots = YankSpotsThatArentBoardSpots(stepSpots);
+                        stepSpots = YankSpotsThatArentBoardSpots(stepSpots, canEnterPortal);
                         stepSpots = YankSpotsOccupiedByThisColor(stepSpots, null); // Yank spots occupied AT ALL
 
                         BoardLocationList attackWalkSpots = WalksToStarSpots(p.Location, false);
@@ -740,19 +754,6 @@ namespace HexC
                             }
                         }
 
-                        bool canEnterPortal = false;
-                        var portalPieceBro = AnyoneThere(new BoardLocation(0, 0));
-                        if (null == portalPieceBro)
-                        {
-                            if (p.PieceType == PiecesEnum.King) // a king can enter an empty portal
-                                canEnterPortal = true;
-                        }
-                        else
-                        {
-                            // any piece can enter the portal (and fall in) if a different-color piece occupies it
-                            if (p.Color != portalPieceBro.Color)
-                                canEnterPortal = true;
-                        }
                         options = YankSpotsThatArentBoardSpots(options, canEnterPortal);
                         options = YankSpotsOccupiedByProtectedPawns(options);
 
@@ -818,10 +819,24 @@ namespace HexC
                 if (true == to.IsValidLocation())
                     if ((false == fSpotMustBeEmpty) || (null == this.AnyoneThere(to)))  /// we can't fucking land on our own piece tho! this is a current bug where it appears i can take my own piece.
                     {
-                        PlacedPiece one = this.AnyoneThere(new BoardLocation(fromHere.Q + RouteOne[iSet, 0], fromHere.R + RouteOne[iSet, 1]));
-                        PlacedPiece two = this.AnyoneThere(new BoardLocation(fromHere.Q + RouteTwo[iSet, 0], fromHere.R + RouteTwo[iSet, 1]));
-                        if (null == one || null == two)
-                            destys.Add(to);
+                        var bl1 = new BoardLocation(fromHere.Q + RouteOne[iSet, 0], fromHere.R + RouteOne[iSet, 1]);
+                        var bl2 = new BoardLocation(fromHere.Q + RouteTwo[iSet, 0], fromHere.R + RouteTwo[iSet, 1]);
+                        PlacedPiece one = this.AnyoneThere(bl1);
+                        PlacedPiece two = this.AnyoneThere(bl2);
+
+                        // is the first route empty AND not the portal? OR
+                        // is the second route empty AND not the portal?
+                        // (Routes through portals cause impossible scenario where king can move into what becomes attacked. Not sure if I'm trippin here.)
+                        if  (
+                                ((null == one) 
+//                          && (bl1.IsPortal == false)
+                                ) 
+                            ||
+                                ((null == two) 
+//                          && (bl2.IsPortal == false)
+                                )
+                            )
+                                destys.Add(to);
                     }
             }
             return destys;
