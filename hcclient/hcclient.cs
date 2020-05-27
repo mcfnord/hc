@@ -102,201 +102,205 @@ namespace HexCClient
         }
 
         protected static string m_whoseTurnItIs; // kooky quotes and stuff, just informational
+        protected static bool m_showDebug = false;
 
         async static Task Main(string[] args)
         {
-            using var client = new HttpClient();
-            var jsonContent = await client.GetStringAsync($"http://localhost/Board/Board?gameId={args[0]}&color={args[1]}");
-
-            var pieces = System.Text.Json.JsonSerializer.Deserialize<List<Spot>>(jsonContent);
-
-            // with these pieces, render the board cleanly
-            HexC.Board b = new HexC.Board();
-            foreach (Spot s in pieces)
-            {
-                if (s.Q == 99)
-                    b.Add(new Piece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color)));
-                else
-                    b.Add(new PlacedPiece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color), s.Q, s.R));
-            }
-
-            // Would you please tell me whose turn it is? Maybe later underline the trio above.
-            m_whoseTurnItIs = await client.GetStringAsync($"http://localhost/Board/WhoseTurn?gameId={args[0]}");
-
-            Board turnStartBoard = new Board(b); // clone this
-
-            // loop as a user interface by showing the board, and commands for the newbies:
             BoardLocation cursor = new BoardLocation(0, 0);
             BoardLocation selected = null;
-//            int iSlotOfSidelinedPiece = -1;
+
+            DateTime lastServerRefresh = DateTime.UtcNow;
+            DateTime lastKeyStrike = DateTime.UtcNow;
+
+            Board b = null;
+            Board turnStartBoard = null;
+
+            using var client = new HttpClient();
 
             while (true)
             {
-                Console.Clear();
+                // Would you please tell me whose turn it is? Maybe later underline the trio above.
+                var whoseTurn = await client.GetStringAsync($"http://34.211.78.118/Board/WhoseTurn?gameId={args[0]}");
+                lastServerRefresh = DateTime.UtcNow;
 
-                // I need a clue for colors
-                SetPieceColor(ColorsEnum.Black); Console.Write("Black ");
-                SetPieceColor(ColorsEnum.Tan);   Console.Write("Tan ");
-                SetPieceColor(ColorsEnum.White); Console.WriteLine("White");
+                bool fRedraw = false;
 
-                Console.WriteLine(m_whoseTurnItIs.Replace("\"", "") + "'s turn.");
-                Console.WriteLine();
-
-                // Show captured pieces across the top, if any
-
-                if (b.SidelinedPieces.Count > 0)
+                // if a turn has changed, nuke any local changes and show new board.
+                if (m_whoseTurnItIs != whoseTurn)
                 {
-                    ColorsEnum col = b.SidelinedPieces[0].Color;
-                    for (int iPieceSlot = 0; iPieceSlot < b.SidelinedPieces.Count; iPieceSlot++)
+                    fRedraw = true;
+                    m_whoseTurnItIs = whoseTurn;
+
+                    var jsonContent = await client.GetStringAsync($"http://34.211.78.118/Board/Board?gameId={args[0]}&color={args[1]}");
+
+                    var pieces = System.Text.Json.JsonSerializer.Deserialize<List<Spot>>(jsonContent);
+
+                    // with these pieces, render the board cleanly
+                    b = new Board();
+                    foreach (Spot s in pieces)
                     {
-                        SetPieceColor(b.SidelinedPieces[iPieceSlot].Color);
-//                        if (iSlotOfSidelinedPiece == iPieceSlot)
-//                            Console.BackgroundColor = ConsoleColor.DarkRed;
-                        if (b.SidelinedPieces[iPieceSlot].Color != col)
-                        {
-                            col = b.SidelinedPieces[iPieceSlot].Color;
-                            Console.WriteLine();
-                        }
-                        Console.Write(b.SidelinedPieces[iPieceSlot].ToChar());
-                        Console.BackgroundColor = ConsoleColor.Black;
+                        if (s.Q == 99)
+                            b.Add(new Piece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color)));
+                        else
+                            b.Add(new PlacedPiece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color), s.Q, s.R));
                     }
-                }
-                Console.WriteLine();
-                Console.WriteLine();
 
-                ShowTextBoard(b, cursor); // cursor could be null
-
-                Console.WriteLine();
-                Console.WriteLine("134679:Move Cursor\r\n5:Select\r\nR:Reset to turn start\r\nF:Finish turn");
-
-                Console.WriteLine("\r\nYou can create this board as a test case:\r\n");
-                foreach (var piece in b.PlacedPieces)
-                {
-                    Console.WriteLine($"b.Add(new PlacedPiece(PiecesEnum.{piece.PieceType}, ColorsEnum.{piece.Color}, {piece.Location.Q}, {piece.Location.R}));");
+                    turnStartBoard = new Board(b); // clone this
+                    lastServerRefresh = DateTime.UtcNow;
                 }
 
-                ConsoleKeyInfo cki = Console.ReadKey();
-                switch (cki.KeyChar.ToString().ToLower()[0])
+                // loop as a user interface by showing the board, and commands for the newbies:
+                while (true)
                 {
-                    case 'f':
-                        {
-                            var whoseTurnBefore = await client.GetStringAsync($"http://localhost/Board/WhoseTurn?gameId={args[0]}");
+                    if (fRedraw)
+                    {
+                        fRedraw = false;
+                        Console.Clear();
 
-                            // Listen up: If your turn STARTED with a piece of your color in the portal,
-                            // and it's still there, then i will take it out for you.
-                            HexC.ColorsEnum whose = FromString.ColorFromString(whoseTurnBefore.Replace("\"", ""));
-                            var centerPiece = turnStartBoard.AnyoneThere(new BoardLocation(0, 0));
-                            if (null != centerPiece)
-                                if (centerPiece.Color == whose)
-                                    b.Remove(centerPiece);
+                        // I need a clue for colors
+                        SetPieceColor(ColorsEnum.Black); Console.Write("Black ");
+                        SetPieceColor(ColorsEnum.Tan); Console.Write("Tan ");
+                        SetPieceColor(ColorsEnum.White); Console.WriteLine("White");
 
-                            PrettyJsonBoard pjb = new PrettyJsonBoard(b.PlacedPieces, b.SidelinedPieces);
-                            HttpContent content = new StringContent(JsonConvert.SerializeObject(pjb), System.Text.Encoding.UTF8, "application/json");
-                            await client.PostAsync($"http://localhost/Board/Moves?gameId={args[0]}", content);
-                            // ok, the event occurred... now ask whose turn it is! That's how we know if the turn was accepted! Clever, no?
-                            m_whoseTurnItIs = await client.GetStringAsync($"http://localhost/Board/WhoseTurn?gameId={args[0]}");
-                            if (whoseTurnBefore == m_whoseTurnItIs)
-                                goto case 'r'; // failed. just reset the turn.
-                            turnStartBoard = new Board(b);  // clone it! cuz it's a new turn!
-                            break;
-                        }
-                    case 'r': b = new Board(turnStartBoard); break;
-                    case '1': cursor = ShiftedSpot(cursor, -1,  1); break;
-                    case '3': cursor = ShiftedSpot(cursor,  0,  1); break;
-                    case '4': cursor = ShiftedSpot(cursor, -1,  0); break;
-                    case '6': cursor = ShiftedSpot(cursor,  1,  0); break;
-                    case '7': cursor = ShiftedSpot(cursor,  0, -1); break;
-                    case '9': cursor = ShiftedSpot(cursor,  1, -1); break;
-                    case '*': // move piece to sideline
-                        {
-                            var piece = b.AnyoneThere(cursor);
-                            b.Remove(piece);
-                            b.SidelinedPieces.Add(piece);
-                            break;
-                        }
+                        Console.WriteLine(m_whoseTurnItIs.Replace("\"", "") + "'s turn.");
+                        Console.WriteLine();
 
-                        /*
-                    case '-':
+                        // Show captured pieces across the top, if any
+
+                        if (b.SidelinedPieces.Count > 0)
                         {
-                            if (-1 == iSlotOfSidelinedPiece)
+                            ColorsEnum col = b.SidelinedPieces[0].Color;
+                            for (int iPieceSlot = 0; iPieceSlot < b.SidelinedPieces.Count; iPieceSlot++)
                             {
-                                if (b.SidelinedPieces.Count == 0)
-                                    break; // nobody in limbo!
-                                cursor = null;
-                                iSlotOfSidelinedPiece = 0;
+                                SetPieceColor(b.SidelinedPieces[iPieceSlot].Color);
+                                if (b.SidelinedPieces[iPieceSlot].Color != col)
+                                {
+                                    col = b.SidelinedPieces[iPieceSlot].Color;
+                                    Console.WriteLine();
+                                }
+                                Console.Write(b.SidelinedPieces[iPieceSlot].ToChar());
+                                Console.BackgroundColor = ConsoleColor.Black;
+                            }
+                        }
+                        Console.WriteLine();
+                        Console.WriteLine();
+
+                        ShowTextBoard(b, cursor); // cursor could be null
+
+                        Console.WriteLine();
+                        Console.WriteLine("134679:Move Cursor\r\n5:Select\r\nR:Reset to turn start\r\nF:Finish turn\r\nD: Show/hide debug details");
+
+                        if (m_showDebug)
+                        {
+                            Console.WriteLine("\r\nYou can create this board as a test case:\r\n");
+                            foreach (var piece in b.PlacedPieces)
+                            {
+                                Console.WriteLine($"b.Add(new PlacedPiece(PiecesEnum.{piece.PieceType}, ColorsEnum.{piece.Color}, {piece.Location.Q}, {piece.Location.R}));");
+                            }
+                        }
+                    }
+
+                    RollAgain: 
+                    // if no keys pressed, wait, and possibly refresh.
+                    if (false == Console.KeyAvailable)
+                    {
+                        // if user is actively using interface, then never refresh.
+                        TimeSpan sinceLastKeyStrike = DateTime.UtcNow - lastKeyStrike;
+                        if (Convert.ToInt32(sinceLastKeyStrike.TotalSeconds) > 2)
+                        {
+                            // if haven't refreshed in five secs, go ahead.
+                            TimeSpan diffy = DateTime.UtcNow - lastServerRefresh;
+                            if (Convert.ToInt32(diffy.TotalSeconds) > 7)
+                            {
+                                break; ; // refreshes
+                            }
+                            System.Threading.Thread.Sleep(200);
+                        }
+                    }
+                    if (false == Console.KeyAvailable)
+                        goto RollAgain;
+
+                    ConsoleKeyInfo cki;
+                    cki = Console.ReadKey();
+                    lastKeyStrike = DateTime.UtcNow;
+                    fRedraw = true;
+
+                    switch (cki.KeyChar.ToString().ToLower()[0])
+                    {
+                        case 'f':
+                            {
+                                var whoseTurnBefore = await client.GetStringAsync($"http://34.211.78.118/Board/WhoseTurn?gameId={args[0]}");
+
+                                // Listen up: If your turn STARTED with a piece of your color in the portal,
+                                // and it's still there, then i will take it out for you.
+                                HexC.ColorsEnum whose = FromString.ColorFromString(whoseTurnBefore.Replace("\"", ""));
+                                var centerPiece = turnStartBoard.AnyoneThere(new BoardLocation(0, 0));
+                                if (null != centerPiece)
+                                    if (centerPiece.Color == whose)
+                                        b.Remove(centerPiece);
+
+                                PrettyJsonBoard pjb = new PrettyJsonBoard(b.PlacedPieces, b.SidelinedPieces);
+                                HttpContent content = new StringContent(JsonConvert.SerializeObject(pjb), System.Text.Encoding.UTF8, "application/json");
+                                await client.PostAsync($"http://34.211.78.118/Board/Moves?gameId={args[0]}", content);
+                                // ok, the event occurred... now ask whose turn it is! That's how we know if the turn was accepted! Clever, no?
+                                m_whoseTurnItIs = await client.GetStringAsync($"http://34.211.78.118/Board/WhoseTurn?gameId={args[0]}");
+                                if (whoseTurnBefore == m_whoseTurnItIs)
+                                    goto case 'r'; // failed. just reset the turn.
+                                turnStartBoard = new Board(b);  // clone it! cuz it's a new turn!
+                                break;
+                            }
+                        case 'r': b = new Board(turnStartBoard); break;
+                        case '1': cursor = ShiftedSpot(cursor, -1, 1); break;
+                        case '3': cursor = ShiftedSpot(cursor, 0, 1); break;
+                        case '4': cursor = ShiftedSpot(cursor, -1, 0); break;
+                        case '6': cursor = ShiftedSpot(cursor, 1, 0); break;
+                        case '7': cursor = ShiftedSpot(cursor, 0, -1); break;
+                        case '9': cursor = ShiftedSpot(cursor, 1, -1); break;
+                        case 'd': m_showDebug = (m_showDebug ? false : true); break;
+                        case '5':
+                            if (null == selected)
+                            {
+                                // none previously selected. just remember this spot as the selection.
+                                if (null != b.AnyoneThere(cursor))
+                                    selected = cursor;
                             }
                             else
                             {
-                                iSlotOfSidelinedPiece++;
-                                if (b.SidelinedPieces.Count < iSlotOfSidelinedPiece)
-                                    iSlotOfSidelinedPiece = -1;
-                            }
-                        }
-                        break;
-                        */
+                                PlacedPiece pp = b.AnyoneThere(selected); // we selected this one earlier
+                                System.Diagnostics.Debug.Assert(pp != null);
 
-                    case '5':
-                        /*
-                        if (-1 != iSlotOfSidelinedPiece)
-                        {
-                            // if nobody in center, put this piece there.
-                            BoardLocation bl = new BoardLocation(0, 0);
-
-                            if (null == b.AnyoneThere(bl))
-                            {
-                                var piece = b.SidelinedPieces[iSlotOfSidelinedPiece];
-                                b.SidelinedPieces.Remove(piece);
-                                PlacedPiece pp = new PlacedPiece(piece.PieceType, piece.Color, 0, 0);
-                                b.Add(pp);
-                                iSlotOfSidelinedPiece = -1;
-                                break;
-                            }
-                        }
-                        else // did we previously select a spot?
-                        */
-                        if (null == selected)
-                        {
-                            // none previously selected. just remember this spot as the selection.
-                            if (null != b.AnyoneThere(cursor))
-                                selected = cursor;
-                        }
-                        else
-                        {
-                            PlacedPiece pp = b.AnyoneThere(selected); // we selected this one earlier
-                            System.Diagnostics.Debug.Assert(pp != null);
-
-                            PlacedPiece pp_dest = b.AnyoneThere(cursor);
-                            if (null != pp_dest)
-                            {
-                                // I can drop my piece on opponent, or Queen-King if valid. But postponing Queen-King magic for now.
-                                if (pp_dest.Color == pp.Color)
-                                    continue;
-
-                                b.Remove(pp_dest);
-                                b.SidelinedPieces.Add(pp_dest);
-
-                                // is the portal empty?
-                                // and if it's empty, do i have any sidelined pieces of this type to relocate to the portal?
-                                if(null == b.AnyoneThere(new BoardLocation(0, 0)))
+                                PlacedPiece pp_dest = b.AnyoneThere(cursor);
+                                if (null != pp_dest)
                                 {
-                                    if (b.SidelinedPieces.ContainsThePiece(pp_dest.PieceType, pp.Color))
-                                        b.Add(new PlacedPiece(pp_dest.PieceType, pp.Color, 0, 0));
-                                }
-                            }
-                            b.Remove(pp);
-                            if (false == cursor.IsPortal)
-                            {
-                                PlacedPiece ppNew = new PlacedPiece(pp, cursor);
-                                b.Add(ppNew);
-                            }
+                                    // I can drop my piece on opponent, or Queen-King if valid. But postponing Queen-King magic for now.
+                                    if (pp_dest.Color == pp.Color)
+                                        continue;
 
-                            selected = null;
-                        }
-                        break;
+                                    b.Remove(pp_dest);
+                                    b.SidelinedPieces.Add(pp_dest);
+
+                                    // is the portal empty?
+                                    // and if it's empty, do i have any sidelined pieces of this type to relocate to the portal?
+                                    if (null == b.AnyoneThere(new BoardLocation(0, 0)))
+                                    {
+                                        if (b.SidelinedPieces.ContainsThePiece(pp_dest.PieceType, pp.Color))
+                                            b.Add(new PlacedPiece(pp_dest.PieceType, pp.Color, 0, 0));
+                                    }
+                                }
+                                b.Remove(pp);
+                                if (false == cursor.IsPortal)
+                                {
+                                    PlacedPiece ppNew = new PlacedPiece(pp, cursor);
+                                    b.Add(ppNew);
+                                }
+
+                                selected = null;
+                            }
+                            break;
+                    }
                 }
             }
         }
-
 
         protected static void SetPieceColor(ColorsEnum color)
         {
@@ -348,20 +352,21 @@ namespace HexCClient
                         }
                     }
 
+                    if (spot.IsPortal)
+                        Console.BackgroundColor = ConsoleColor.DarkCyan;
+
                     if (singleSpot != null)
                     {
                         if (BoardLocation.IsSameLocation(singleSpot, spot))
-                            Console.BackgroundColor = ConsoleColor.DarkRed;
+                            Console.BackgroundColor = ConsoleColor.DarkGreen;
                     }
 
                     PlacedPiece p = b.AnyoneThere(spot);
                     if (null == p)
                     {
-                        if (spot.IsPortal)
-                            Console.BackgroundColor = ConsoleColor.DarkGray;
-
                         Console.ForegroundColor = ConsoleColor.Gray;
-                        Console.Write(spot.IsPortal ? "X" : "·");
+                        //Console.Write(spot.IsPortal ? "O" : "·");
+                        Console.Write("·");
                         Console.BackgroundColor = ConsoleColor.Black;
                         Console.ResetColor();
                         Console.Write(" ");
