@@ -97,7 +97,8 @@ namespace HttpClientSample
         static async Task Main(string[] args)
         {
             using var client = new HttpClient();
-            var jsonContent = await client.GetStringAsync("https://localhost:44370/Board/Board?gameId=123&color=white");
+            //            var jsonContent = await client.GetStringAsync("https://34.211.78.118/Board/Board?gameId=abc&color=white");
+            var jsonContent = await client.GetStringAsync($"http://34.211.78.118/Board/Board?gameId={args[0]}&color={args[1]}");
 
             var pieces = JsonSerializer.Deserialize<List<Spot>>(jsonContent);
 
@@ -140,7 +141,7 @@ namespace HttpClientSample
             // adds and removes in one body.
             var themEvents = mahmoove.Key;
 
-            //        HttpResponseMessage resp = await client.PostAsJsonAsync("https://ladybug.international/Move/Events?gameId=freshy", themEvents);
+            //        HttpResponseMessage resp = await client.PostAsJsonAsync("https://ladybug.international/Move/Events?gameId=abc", themEvents);
             //        resp.EnsureSuccessStatusCode();
 
             Console.ReadLine();
