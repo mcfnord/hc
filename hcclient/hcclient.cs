@@ -120,7 +120,7 @@ namespace HexCClient
             while (true)
             {
                 // Would you please tell me whose turn it is? Maybe later underline the trio above.
-                var whoseTurn = await client.GetStringAsync($"http://34.211.78.118/Board/WhoseTurn?gameId={args[0]}");
+                var whoseTurn = await client.GetStringAsync($"http://192.168.0.14/Board/WhoseTurn?gameId={args[0]}");
                 lastServerRefresh = DateTime.UtcNow;
 
                 bool fRedraw = false;
@@ -131,7 +131,7 @@ namespace HexCClient
                     fRedraw = true;
                     m_whoseTurnItIs = whoseTurn;
 
-                    var jsonContent = await client.GetStringAsync($"http://34.211.78.118/Board/Board?gameId={args[0]}&color={args[1]}");
+                    var jsonContent = await client.GetStringAsync($"http://192.168.0.14/Board/Board?gameId={args[0]}&color={args[1]}");
 
                     var pieces = System.Text.Json.JsonSerializer.Deserialize<List<Spot>>(jsonContent);
 
@@ -197,106 +197,125 @@ namespace HexCClient
                             {
                                 Console.WriteLine($"b.Add(new PlacedPiece(PiecesEnum.{piece.PieceType}, ColorsEnum.{piece.Color}, {piece.Location.Q}, {piece.Location.R}));");
                             }
-                        }
-                    }
+                            Console.WriteLine();
+                            Console.Write("[");
+                            bool fFirst = true;
+                            foreach (var piece in b.PlacedPieces)
+                            {
+                                if (fFirst)
+                                {
+                                    fFirst = false; 
+//                                    Console.WriteLine("");
+                                }
+                                else
+                                    Console.WriteLine(",");
+                                Console.Write("{");
+                                Console.Write("\"p\":\"{0}\",\"c\":\"{1}\",\"q\":{2},\"r\":{3}",
+                                    piece.PieceType.ToString(), piece.Color.ToString(), piece.Location.Q.ToString(), piece.Location.R.ToString());
+                                Console.Write("}");
 
-                    RollAgain: 
-                    // if no keys pressed, wait, and possibly refresh.
-                    if (false == Console.KeyAvailable)
-                    {
-                        // if user is actively using interface, then never refresh.
-                        TimeSpan sinceLastKeyStrike = DateTime.UtcNow - lastKeyStrike;
-                        if (Convert.ToInt32(sinceLastKeyStrike.TotalSeconds) > 2)
+                            }
+                            Console.Write("]");
+                        }
+
+                    RollAgain:
+                        // if no keys pressed, wait, and possibly refresh.
+                        if (false == Console.KeyAvailable)
                         {
-                            // if haven't refreshed in five secs, go ahead.
-                            TimeSpan diffy = DateTime.UtcNow - lastServerRefresh;
-                            if (Convert.ToInt32(diffy.TotalSeconds) > 7)
+                            // if user is actively using interface, then never refresh.
+                            TimeSpan sinceLastKeyStrike = DateTime.UtcNow - lastKeyStrike;
+                            if (Convert.ToInt32(sinceLastKeyStrike.TotalSeconds) > 2)
                             {
-                                break; ; // refreshes
+                                // if haven't refreshed in five secs, go ahead.
+                                TimeSpan diffy = DateTime.UtcNow - lastServerRefresh;
+                                if (Convert.ToInt32(diffy.TotalSeconds) > 7)
+                                {
+                                    break; ; // refreshes
+                                }
+                                System.Threading.Thread.Sleep(200);
                             }
-                            System.Threading.Thread.Sleep(200);
                         }
-                    }
-                    if (false == Console.KeyAvailable)
-                        goto RollAgain;
+                        if (false == Console.KeyAvailable)
+                            goto RollAgain;
 
-                    ConsoleKeyInfo cki;
-                    cki = Console.ReadKey();
-                    lastKeyStrike = DateTime.UtcNow;
-                    fRedraw = true;
+                        ConsoleKeyInfo cki;
+                        cki = Console.ReadKey();
+                        lastKeyStrike = DateTime.UtcNow;
+                        fRedraw = true;
 
-                    switch (cki.KeyChar.ToString().ToLower()[0])
-                    {
-                        case 'f':
-                            {
-                                var whoseTurnBefore = await client.GetStringAsync($"http://34.211.78.118/Board/WhoseTurn?gameId={args[0]}");
-
-                                // Listen up: If your turn STARTED with a piece of your color in the portal,
-                                // and it's still there, then i will take it out for you.
-                                HexC.ColorsEnum whose = FromString.ColorFromString(whoseTurnBefore.Replace("\"", ""));
-                                var centerPiece = turnStartBoard.AnyoneThere(new BoardLocation(0, 0));
-                                if (null != centerPiece)
-                                    if (centerPiece.Color == whose)
-                                        b.Remove(centerPiece);
-
-                                PrettyJsonBoard pjb = new PrettyJsonBoard(b.PlacedPieces, b.SidelinedPieces);
-                                HttpContent content = new StringContent(JsonConvert.SerializeObject(pjb), System.Text.Encoding.UTF8, "application/json");
-                                await client.PostAsync($"http://34.211.78.118/Board/Moves?gameId={args[0]}", content);
-                                // ok, the event occurred... now ask whose turn it is! That's how we know if the turn was accepted! Clever, no?
-                                m_whoseTurnItIs = await client.GetStringAsync($"http://34.211.78.118/Board/WhoseTurn?gameId={args[0]}");
-                                if (whoseTurnBefore == m_whoseTurnItIs)
-                                    goto case 'r'; // failed. just reset the turn.
-                                turnStartBoard = new Board(b);  // clone it! cuz it's a new turn!
-                                break;
-                            }
-                        case 'r': b = new Board(turnStartBoard); break;
-                        case '1': cursor = ShiftedSpot(cursor, -1, 1); break;
-                        case '3': cursor = ShiftedSpot(cursor, 0, 1); break;
-                        case '4': cursor = ShiftedSpot(cursor, -1, 0); break;
-                        case '6': cursor = ShiftedSpot(cursor, 1, 0); break;
-                        case '7': cursor = ShiftedSpot(cursor, 0, -1); break;
-                        case '9': cursor = ShiftedSpot(cursor, 1, -1); break;
-                        case 'd': m_showDebug = (m_showDebug ? false : true); break;
-                        case '5':
-                            if (null == selected)
-                            {
-                                // none previously selected. just remember this spot as the selection.
-                                if (null != b.AnyoneThere(cursor))
-                                    selected = cursor;
-                            }
-                            else
-                            {
-                                PlacedPiece pp = b.AnyoneThere(selected); // we selected this one earlier
-                                System.Diagnostics.Debug.Assert(pp != null);
-
-                                PlacedPiece pp_dest = b.AnyoneThere(cursor);
-                                if (null != pp_dest)
+                        switch (cki.KeyChar.ToString().ToLower()[0])
+                        {
+                            case 'f':
                                 {
-                                    // I can drop my piece on opponent, or Queen-King if valid. But postponing Queen-King magic for now.
-                                    if (pp_dest.Color == pp.Color)
-                                        continue;
+                                    var whoseTurnBefore = await client.GetStringAsync($"http://192.168.0.14/Board/WhoseTurn?gameId={args[0]}");
 
-                                    b.Remove(pp_dest);
-                                    b.SidelinedPieces.Add(pp_dest);
+                                    // Listen up: If your turn STARTED with a piece of your color in the portal,
+                                    // and it's still there, then i will take it out for you.
+                                    HexC.ColorsEnum whose = FromString.ColorFromString(whoseTurnBefore.Replace("\"", ""));
+                                    var centerPiece = turnStartBoard.AnyoneThere(new BoardLocation(0, 0));
+                                    if (null != centerPiece)
+                                        if (centerPiece.Color == whose)
+                                            b.Remove(centerPiece);
 
-                                    // is the portal empty?
-                                    // and if it's empty, do i have any sidelined pieces of this type to relocate to the portal?
-                                    if (null == b.AnyoneThere(new BoardLocation(0, 0)))
+                                    PrettyJsonBoard pjb = new PrettyJsonBoard(b.PlacedPieces, b.SidelinedPieces);
+                                    HttpContent content = new StringContent(JsonConvert.SerializeObject(pjb), System.Text.Encoding.UTF8, "application/json");
+                                    await client.PostAsync($"http://192.168.0.14/Board/Moves?gameId={args[0]}", content);
+                                    // ok, the event occurred... now ask whose turn it is! That's how we know if the turn was accepted! Clever, no?
+                                    m_whoseTurnItIs = await client.GetStringAsync($"http://192.168.0.14/Board/WhoseTurn?gameId={args[0]}");
+                                    if (whoseTurnBefore == m_whoseTurnItIs)
+                                        goto case 'r'; // failed. just reset the turn.
+                                    turnStartBoard = new Board(b);  // clone it! cuz it's a new turn!
+                                    break;
+                                }
+                            case 'r': b = new Board(turnStartBoard); break;
+                            case '1': cursor = ShiftedSpot(cursor, -1, 1); break;
+                            case '3': cursor = ShiftedSpot(cursor, 0, 1); break;
+                            case '4': cursor = ShiftedSpot(cursor, -1, 0); break;
+                            case '6': cursor = ShiftedSpot(cursor, 1, 0); break;
+                            case '7': cursor = ShiftedSpot(cursor, 0, -1); break;
+                            case '9': cursor = ShiftedSpot(cursor, 1, -1); break;
+                            case 'd': m_showDebug = (m_showDebug ? false : true); break;
+                            case '5':
+                                if (null == selected)
+                                {
+                                    // none previously selected. just remember this spot as the selection.
+                                    if (null != b.AnyoneThere(cursor))
+                                        selected = cursor;
+                                }
+                                else
+                                {
+                                    PlacedPiece pp = b.AnyoneThere(selected); // we selected this one earlier
+                                    System.Diagnostics.Debug.Assert(pp != null);
+
+                                    PlacedPiece pp_dest = b.AnyoneThere(cursor);
+                                    if (null != pp_dest)
                                     {
-                                        if (b.SidelinedPieces.ContainsThePiece(pp_dest.PieceType, pp.Color))
-                                            b.Add(new PlacedPiece(pp_dest.PieceType, pp.Color, 0, 0));
-                                    }
-                                }
-                                b.Remove(pp);
-                                if (false == cursor.IsPortal)
-                                {
-                                    PlacedPiece ppNew = new PlacedPiece(pp, cursor);
-                                    b.Add(ppNew);
-                                }
+                                        // I can drop my piece on opponent, or Queen-King if valid. But postponing Queen-King magic for now.
+                                        if (pp_dest.Color == pp.Color)
+                                            continue;
 
-                                selected = null;
-                            }
-                            break;
+                                        b.Remove(pp_dest);
+                                        b.SidelinedPieces.Add(pp_dest);
+
+                                        // is the portal empty?
+                                        // and if it's empty, do i have any sidelined pieces of this type to relocate to the portal?
+                                        if (null == b.AnyoneThere(new BoardLocation(0, 0)))
+                                        {
+                                            if (b.SidelinedPieces.ContainsThePiece(pp_dest.PieceType, pp.Color))
+                                                b.Add(new PlacedPiece(pp_dest.PieceType, pp.Color, 0, 0));
+                                        }
+                                    }
+                                    b.Remove(pp);
+                                    if (false == cursor.IsPortal)
+                                    {
+                                        PlacedPiece ppNew = new PlacedPiece(pp, cursor);
+                                        b.Add(ppNew);
+                                    }
+
+                                    selected = null;
+                                }
+                                break;
+                        }
                     }
                 }
             }
