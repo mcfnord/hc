@@ -102,19 +102,6 @@ namespace hcsv2020.Controllers
                 return;
             HexC.Board b = new HexC.Board();
 
-
-            //            b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.White, 4, -3));
-            //            b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.White, 2, 1));
-            b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 2, -1));
-            b.Add(new PlacedPiece(PiecesEnum.Queen, ColorsEnum.Black, 0, 0));
-            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Black, -2, -3));
-            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.White, 5, -3));
-            b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Tan, -2, 5));
-
-            m_allBoards.Add(gameId, b);
-            m_yourTurn.Add(gameId, ColorsEnum.White);
-
-            /*
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.Black, -1, -4));
             b.Add(new PlacedPiece(PiecesEnum.Castle, ColorsEnum.Black, -4, -1));
             b.Add(new PlacedPiece(PiecesEnum.Elephant, ColorsEnum.Black, -1, -3));
@@ -149,9 +136,6 @@ namespace hcsv2020.Controllers
             b.Add(new PlacedPiece(PiecesEnum.Queen, ColorsEnum.White, 5, -2));
             m_allBoards.Add(gameId, b);
             m_yourTurn.Add(gameId, ColorsEnum.Black); // black goes first  
-            */
-
-
         }
     }
 
@@ -441,6 +425,7 @@ b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
 
 
         // Receive moves that constitute a player's turn, but only accept them if they're confirmed to be a valid outcome.
+        // if it is valid, also determine if it places any other player into checkmate.
 
         [HttpPost]
         public IActionResult Moves([FromQuery] string gameId)
