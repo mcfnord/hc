@@ -159,34 +159,6 @@ namespace hcsv2020.Controllers
 
     public class BoardController : ControllerBase
     {
-
-        class UnitTests
-        {
-            public static bool m_fullTestsFinished = false;
-            public static void RunFullTests()
-            {
-                /*
-                HexC.Board b = new HexC.Board();
-
-b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.White, 5, -5));
-b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -5));
-b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Tan, 2, -4));
-b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.Black, -4, -1));
-b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
- 
-
-                Board bTo = new Board(b);
-                bTo.BruteForceMove(2, -4, 3, -5); // king to new spot
-
-                ShowTextBoard(bTo);
-
-                if (true == CanFindOptionResultingInNewBoard(ColorsEnum.Tan, b, bTo))
-                    Debug.Assert(false); // 
-                    */
-            }
-        }
-
-
         public class Spot
         {
             public int Q { get; set; }
@@ -424,13 +396,43 @@ b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
         }
 
 
+        protected static string StringFromColorEnum(ColorsEnum col)
+        {
+            switch (col)
+            {
+                case ColorsEnum.Black: return "Black";
+                case ColorsEnum.Tan: return "Tan";
+                case ColorsEnum.White: return "White";
+                default:
+                    Debug.Assert(false);
+                    return null;
+            }
+        }
+
+
+
+        /// <summary>
+        /// ////////////////////////////////////////////
+        /// ////////////////////////////////////////////
+        /// ////////////////////////////////////////////
+        /// 
+        /// NON-ENDPOINTS ABOVE, ENDPOINTS BELOW
+        /// 
+        /// ////////////////////////////////////////////
+        /// ////////////////////////////////////////////
+        /// ////////////////////////////////////////////
+        /// </summary>
+
+        // a single mutex serializes endpoint calls
+        private static System.Threading.Mutex m_serializerMutex = new System.Threading.Mutex();
+
         // Receive moves that constitute a player's turn, but only accept them if they're confirmed to be a valid outcome.
         // if it is valid, also determine if it places any other player into checkmate.
 
         [HttpPost]
         public IActionResult Moves([FromQuery] string gameId)
         {
-            System.Threading.Semaphore s = new System.Threading.Semaphore(1, 1, "COPS"); s.WaitOne();
+            m_serializerMutex.WaitOne();
             try
             {
                 System.IO.Stream req = Request.Body;
@@ -467,28 +469,13 @@ b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
                 return Ok(System.Text.Json.JsonSerializer.Serialize(fSuccess));
                 // i guess as far as i'm concerned it's the next player's turn. We all want a visual indicator of whose turn it is. May as well get one.
             }
-            finally { s.Release(); }
+            finally { m_serializerMutex.ReleaseMutex(); }
         }
     
-    protected static string StringFromColorEnum(ColorsEnum col)
-        {
-            switch (col)
-            {
-                case ColorsEnum.Black: return "Black";
-                case ColorsEnum.Tan: return "Tan";
-                case ColorsEnum.White: return "White";
-                default:
-                    Debug.Assert(false);
-                    return null;
-            }
-        }
-
-
         [HttpGet]
         public IActionResult WhoseTurn([FromQuery] string gameId)
         {
-            // fuck CORS for now: Response.Headers.Add("Access-Control-Allow-Origin", "*");
-            System.Threading.Semaphore s = new System.Threading.Semaphore(1, 1, "COPS"); s.WaitOne();
+            m_serializerMutex.WaitOne();
             try
             {
                 if (null == gameId)
@@ -503,23 +490,14 @@ b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
 
                 return Ok(jsonString);
             }
-            finally { s.Release(); }
+            finally { m_serializerMutex.ReleaseMutex(); }
         }
 
 
         [HttpGet]
         public IActionResult Board([FromQuery] string gameId, [FromQuery] string color) // IS color USED? NO?
         {
-            // On the first run, and only once, I perform a battery of tests.
-            // For now these tests are here, but eventually they might be deeper in the system.
-            if (false == UnitTests.m_fullTestsFinished)
-            {
-                UnitTests.RunFullTests();
-                UnitTests.m_fullTestsFinished = true;
-            }
-
-            // fuck CORS for now: Response.Headers.Add("Access-Control-Allow-Origin", "*");
-            System.Threading.Semaphore s = new System.Threading.Semaphore(1, 1, "COPS"); s.WaitOne();
+            m_serializerMutex.WaitOne();
             try
             {
                 if (null == gameId || color == null)
@@ -537,8 +515,31 @@ b.Add(new PlacedPiece(PiecesEnum.Pawn, ColorsEnum.White, 3, -3));
 
                 return Ok(jsonString);
             }
-            finally { s.Release(); }
+            finally { m_serializerMutex.ReleaseMutex(); }
         }
+
+        /*
+        [HttpGet]
+        public IActionResult FiveSecs([FromQuery] string gameId)
+        {
+            Console.WriteLine("WantFive");
+            m_serializerMutex.WaitOne();
+            try
+            {
+                Console.WriteLine("DoinFive");
+                System.Threading.Thread.Sleep(5000);
+                Console.WriteLine("FiveDone");
+
+                return Ok();
+            }
+            finally
+            {
+                m_serializerMutex.ReleaseMutex();
+                Console.WriteLine("FiveAllDone");
+            }
+        }
+        */
+
 
         /* revive this when I'm using CORS again
 
