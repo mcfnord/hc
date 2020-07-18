@@ -33,6 +33,11 @@ namespace hcsv2020.Controllers
             return m_allBoards[gameId];
         }
 
+        public static bool GameOver(string gameId)
+        {
+            return (m_fGamesOver.Contains(gameId) ? true : false);
+        }
+
         public static bool ContainsGame(string gameId) { return m_allBoards.ContainsKey(gameId); } // m_allPieces.ContainsKey(id); }
         // public static Dictionary<string, string> GameBoard(string id) { if (m_allPieces.ContainsKey(id)) return m_allPieces[id]; return null; }
         //        public static Dictionary<string, string> TeamHues(string id, string color) { return m_allHues[id][ColorEnumFromString(color)]; }
@@ -52,48 +57,83 @@ namespace hcsv2020.Controllers
         // There's just one board per game, but each game has different hue maps for each player.
         //        protected static Dictionary<string, Dictionary<string, string>> m_allPieces = new Dictionary<string, Dictionary<string, string>>();
 
+        /*
         public static void UNIT_TEST_BACKDOOR_allBoardsYourTurn(string gameId, Board b, ColorsEnum col)
         {
             m_allBoards[gameId] = b;
             m_yourTurn[gameId] = col;
         }
+        */
 
         protected static Dictionary<string, Board> m_allBoards = new Dictionary<string, Board>();
-
-//        protected static Dictionary<string, Dictionary<HexC.ColorsEnum, Dictionary<string, string>>> m_allHues = new Dictionary<string, Dictionary<HexC.ColorsEnum, Dictionary<string, string>>>();
-        // I care who pressed Turn End
-
         protected static Dictionary<string, HexC.ColorsEnum> m_yourTurn = new Dictionary<string, HexC.ColorsEnum>();
+        protected static List<string> m_fGamesOver = new List<string>();
+
+        protected static Dictionary<string, Board> m_allBoardsOnLastTurnEnd = new Dictionary<string, Board>();
+        protected static Dictionary<string, HexC.ColorsEnum> m_yourTurnOnLastTurnEnd = new Dictionary<string, HexC.ColorsEnum>();
+
 
         public static HexC.ColorsEnum WhoseTurn(string gameId)
         {
             Debug.Assert(ContainsGame(gameId));
-            return m_yourTurn[gameId];
+            return (HexC.ColorsEnum) m_yourTurn[gameId];
         }
+
+
+        public static void RollbackOneMove(string gameId)
+        {
+            // Fastest implementation is just changing to rollback data
+            // this will change the whole state to the previous state,
+            // by starting with previous state default (no change)
+            // and by overwriting that [1] state.
+
+            m_allBoards[gameId] = m_allBoardsOnLastTurnEnd[gameId];
+            m_yourTurn[gameId] = m_yourTurnOnLastTurnEnd[gameId];
+        }
+
 
         public static void ReportSuccessfulTurn(string gameId, HexC.ColorsEnum color, Board b)
         {
-            // could save turn history here but here i just trash it.
+            // Save the current state in the lastMove objects
+            // and update game state
+            m_allBoardsOnLastTurnEnd[gameId] = m_allBoards[gameId];
+            m_yourTurnOnLastTurnEnd[gameId] = m_yourTurn[gameId];
+
+            // now set new game state
             m_allBoards[gameId] = b;
             switch (color)
             {
                 case HexC.ColorsEnum.White:
                     m_yourTurn[gameId] = HexC.ColorsEnum.Tan;
-                    return;
+                    break;
 
                 case HexC.ColorsEnum.Tan:
                     m_yourTurn[gameId] = HexC.ColorsEnum.Black;
-                    return;
+                    break;
 
                 case HexC.ColorsEnum.Black:
                     m_yourTurn[gameId] = HexC.ColorsEnum.White;
-                    return;
+                    break;
 
-                default:
-                    Debug.Assert(false);
+                default: Debug.Assert(false); break;
+            }
+
+            // If we detect that the new successful turn has placed the next player in a state where they cannot make any move,
+            // then we set m_yourTurn[gameId] to null
+            foreach (var piece in b.PlacedPiecesThisColor((ColorsEnum)m_yourTurn[gameId]))
+            {
+                var options = b.WhatCanICauseWithDoo(piece);
+                if (options.Count > 0)
                     return;
             }
+            // it's still someone's turn....
+            // so i don't do this...
+            // m_yourTurn[gameId] = null; // no options for any pieces = game over. so no next turn!
+            // but instead,
+            // i do this:
+            m_fGamesOver.Add(gameId);
         }
+
 
         public static void MakeCertainGameExists(string gameId)
         {
@@ -135,7 +175,9 @@ namespace hcsv2020.Controllers
             b.Add(new PlacedPiece(PiecesEnum.King, ColorsEnum.White, 5, -3));
             b.Add(new PlacedPiece(PiecesEnum.Queen, ColorsEnum.White, 5, -2));
             m_allBoards.Add(gameId, b);
+            m_allBoardsOnLastTurnEnd.Add(gameId, b);
             m_yourTurn.Add(gameId, ColorsEnum.Black); // black goes first  
+            m_yourTurnOnLastTurnEnd.Add(gameId, ColorsEnum.Black); // black went first in the very first game, and in the game before that
         }
     }
 
@@ -435,6 +477,10 @@ namespace hcsv2020.Controllers
             m_serializerMutex.WaitOne();
             try
             {
+                if (null == gameId)
+                    return BadRequest();
+                VisualBoardStore.MakeCertainGameExists(gameId);
+
                 System.IO.Stream req = Request.Body;
                 //     req.Seek(0, System.IO.SeekOrigin.Begin);
                 string json = new System.IO.StreamReader(req).ReadToEnd();
@@ -471,7 +517,25 @@ namespace hcsv2020.Controllers
             }
             finally { m_serializerMutex.ReleaseMutex(); }
         }
-    
+
+        [HttpPost]
+        public IActionResult RollBackOne([FromQuery] string gameId)
+        {
+            m_serializerMutex.WaitOne();
+            try
+            {
+                if (null == gameId)
+                    return BadRequest();
+                VisualBoardStore.MakeCertainGameExists(gameId);
+                VisualBoardStore.RollbackOneMove(gameId);
+
+                return Ok();
+            }
+            finally { m_serializerMutex.ReleaseMutex(); }
+        }
+
+
+
         [HttpGet]
         public IActionResult WhoseTurn([FromQuery] string gameId)
         {
@@ -480,14 +544,13 @@ namespace hcsv2020.Controllers
             {
                 if (null == gameId)
                     return BadRequest();
-
                 VisualBoardStore.MakeCertainGameExists(gameId);
 
-                var col = StringFromColorEnum(VisualBoardStore.WhoseTurn(gameId));
+                HexC.ColorsEnum colorsEnum = VisualBoardStore.WhoseTurn(gameId);
+                string col = StringFromColorEnum(colorsEnum);
+                if (VisualBoardStore.GameOver(gameId))
+                    col = "LOST: " + col;
                 var jsonString = System.Text.Json.JsonSerializer.Serialize(col);
-
-                Console.WriteLine(jsonString);
-
                 return Ok(jsonString);
             }
             finally { m_serializerMutex.ReleaseMutex(); }
@@ -502,8 +565,8 @@ namespace hcsv2020.Controllers
             {
                 if (null == gameId || color == null)
                     return BadRequest();
-
                 VisualBoardStore.MakeCertainGameExists(gameId);
+
                 Board b = VisualBoardStore.GameBoard(gameId);
 
                 PrettyJsonBoard pjb = new PrettyJsonBoard(b.PlacedPieces, b.SidelinedPieces);
@@ -517,29 +580,6 @@ namespace hcsv2020.Controllers
             }
             finally { m_serializerMutex.ReleaseMutex(); }
         }
-
-        /*
-        [HttpGet]
-        public IActionResult FiveSecs([FromQuery] string gameId)
-        {
-            Console.WriteLine("WantFive");
-            m_serializerMutex.WaitOne();
-            try
-            {
-                Console.WriteLine("DoinFive");
-                System.Threading.Thread.Sleep(5000);
-                Console.WriteLine("FiveDone");
-
-                return Ok();
-            }
-            finally
-            {
-                m_serializerMutex.ReleaseMutex();
-                Console.WriteLine("FiveAllDone");
-            }
-        }
-        */
-
 
         /* revive this when I'm using CORS again
 
