@@ -188,7 +188,7 @@ namespace HexCClient
                         ShowTextBoard(b, cursor); // cursor could be null
 
                         Console.WriteLine();
-                        Console.WriteLine("134679:Move Cursor\r\n5:Select\r\nR:Reset to turn start\r\nF:Finish turn\r\nD: Show/hide debug details");
+                        Console.WriteLine("134679:Move Cursor\r\n5:Select\r\nR:Reset to turn start\r\nF:Finish turn\r\nB:Back one move (if possible)\r\nD: Show/hide debug details");
 
                         if (m_showDebug)
                         {
@@ -268,6 +268,16 @@ namespace HexCClient
                                 turnStartBoard = new Board(b);  // clone it! cuz it's a new turn!
                                 break;
                             }
+                        case 'b':
+                            Console.WriteLine("Permanently step back one move? Y/N");
+                            cki = Console.ReadKey();
+                            if (cki.KeyChar.ToString().ToLower() == "y")
+                            {
+                                HttpContent content = new StringContent("", System.Text.Encoding.UTF8, "application/json");
+                                await client.PostAsync($"http://{args[0]}/Board/RollBackOne?gameId={args[1]}", content);
+                            }
+                            break;
+
                         case 'r': b = new Board(turnStartBoard); break;
                         case '1': cursor = ShiftedSpot(cursor, -1, 1); break;
                         case '3': cursor = ShiftedSpot(cursor, 0, 1); break;
@@ -282,34 +292,52 @@ namespace HexCClient
                                 // none previously selected. just remember this spot as the selection.
                                 if (null != b.AnyoneThere(cursor))
                                     selected = cursor;
+                                break; // just easier to read?
                             }
                             else
                             {
-                                PlacedPiece pp = b.AnyoneThere(selected); // we selected this one earlier
-                                System.Diagnostics.Debug.Assert(pp != null);
+                                PlacedPiece pieceAtOrigin = b.AnyoneThere(selected);
+                                System.Diagnostics.Debug.Assert(pieceAtOrigin != null);
 
-                                PlacedPiece pp_dest = b.AnyoneThere(cursor);
-                                if (null != pp_dest)
+                                // if the piece in the center is my piece, i'll remove it later
+                                bool fMoveOrLose = false;
+                                PlacedPiece portalPiece = b.AnyoneThere(new BoardLocation(0, 0));
+                                if (null != portalPiece)
+                                {
+                                    if (pieceAtOrigin.Color == portalPiece.Color)
+                                        fMoveOrLose = true;
+                                }
+
+                                // is anyone at our destination spot?
+                                PlacedPiece pieceAtDest = b.AnyoneThere(cursor);
+                                if (null != pieceAtDest)
                                 {
                                     // I can drop my piece on opponent, or Queen-King if valid. But postponing Queen-King magic for now.
-                                    if (pp_dest.Color == pp.Color)
+                                    if (pieceAtDest.Color == pieceAtOrigin.Color)
                                         continue;
 
-                                    b.Remove(pp_dest);
-                                    b.SidelinedPieces.Add(pp_dest);
-
-                                    // is the portal empty?
-                                    // and if it's empty, do i have any sidelined pieces of this type to relocate to the portal?
-                                    if (null == b.AnyoneThere(new BoardLocation(0, 0)))
-                                    {
-                                        if (b.SidelinedPieces.ContainsThePiece(pp_dest.PieceType, pp.Color))
-                                            b.Add(new PlacedPiece(pp_dest.PieceType, pp.Color, 0, 0));
-                                    }
+                                    b.Remove(pieceAtDest);
+                                    b.SidelinedPieces.Add(pieceAtDest);
                                 }
-                                b.Remove(pp);
+
+                                // If there's a piece at the destination, then
+                                // is the portal empty? if so,
+                                // do i have any sidelined pieces of this type to relocate to the portal?
+                                if (null != pieceAtDest)
+                                    if (null == b.AnyoneThere(new BoardLocation(0, 0)))
+                                        if (b.SidelinedPieces.ContainsThePiece(pieceAtDest.PieceType, pieceAtOrigin.Color))
+                                            b.Add(new PlacedPiece(pieceAtDest.PieceType, pieceAtOrigin.Color, 0, 0));
+
+                                // NO MATTER WHAT, if we are moving a piece while our own color is in the portal, then it's gone.
+                                if (fMoveOrLose)
+                                    b.Remove(portalPiece);
+
+                                // remove the original piece.
+                                // and wtf is cursor?
+                                b.Remove(pieceAtOrigin);
                                 if (false == cursor.IsPortal)
                                 {
-                                    PlacedPiece ppNew = new PlacedPiece(pp, cursor);
+                                    PlacedPiece ppNew = new PlacedPiece(pieceAtOrigin, cursor);
                                     b.Add(ppNew);
                                 }
 
