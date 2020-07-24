@@ -35,7 +35,7 @@ namespace hcsv2020.Controllers
 
         public static bool GameOver(string gameId)
         {
-            return (m_fGamesOver.Contains(gameId) ? true : false);
+            return (m_gamesOver.Contains(gameId) ? true : false);
         }
 
         public static bool ContainsGame(string gameId) { return m_allBoards.ContainsKey(gameId); } // m_allPieces.ContainsKey(id); }
@@ -67,7 +67,7 @@ namespace hcsv2020.Controllers
 
         protected static Dictionary<string, Board> m_allBoards = new Dictionary<string, Board>();
         protected static Dictionary<string, HexC.ColorsEnum> m_yourTurn = new Dictionary<string, HexC.ColorsEnum>();
-        protected static List<string> m_fGamesOver = new List<string>();
+        protected static List<string> m_gamesOver = new List<string>();
 
         protected static Dictionary<string, Board> m_allBoardsOnLastTurnEnd = new Dictionary<string, Board>();
         protected static Dictionary<string, HexC.ColorsEnum> m_yourTurnOnLastTurnEnd = new Dictionary<string, HexC.ColorsEnum>();
@@ -126,14 +126,43 @@ namespace hcsv2020.Controllers
                 if (options.Count > 0)
                     return;
             }
+
             // it's still someone's turn....
             // so i don't do this...
             // m_yourTurn[gameId] = null; // no options for any pieces = game over. so no next turn!
             // but instead,
             // i do this:
-            m_fGamesOver.Add(gameId);
-        }
+            m_gamesOver.Add(gameId);
+            //m_gameLoser.Add(m_yourTurn[gameId]) ;
 
+            // The player who can't move out of check is in checkmate. That player just lost.
+            // To determine who won, we need to determine which other player put the player into checkmate FIRST.
+            // Just back up one turn and determine if this same player is in checkmate again there.
+            // if so, their neighbor to the left has won. if not, then their player to the right has created the  checkmate state.
+
+            /*
+            if Checkmated(m_yourTurn[gameId]))
+            {
+                m_yourTurn-m_yourTurn loses. who wins?
+                    if Checkmated(boardJustBeforeThisBoard, m_yourTurn[gameId])
+                        PlayerToLeftWOn
+                       else
+                    PlayerToRightWon
+            */
+            // was the player in a checkmate state at the start of the turn of the player to the right?
+            foreach (var piece in m_allBoardsOnLastTurnEnd[gameId].PlacedPiecesThisColor(m_yourTurn[gameId]))
+            {
+                var options = b.WhatCanICauseWithDoo(piece);
+                if (options.Count > 0)
+                {
+                    // Loser could have moved out of check when player-to-right's turn started.
+                    Console.WriteLine("{0} won.", m_yourTurnOnLastTurnEnd[gameId]);
+                    return;
+                }
+
+            }
+            Console.WriteLine("The player who isn't {0} or {1} won.", m_yourTurn[gameId], m_yourTurnOnLastTurnEnd[gameId]);
+        }
 
         public static void MakeCertainGameExists(string gameId)
         {
