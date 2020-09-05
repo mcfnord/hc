@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Collections.Generic;
 using HexC;
 using Newtonsoft.Json;
+using System.IO;
 
 namespace HexCClient
 {
@@ -117,6 +118,17 @@ namespace HexCClient
 
             using var client = new HttpClient();
 
+            // if there is a 4th parameter, it's a local filename of a game we *create* on the server
+            // ONLY SUCCESSFUL IF IT DOESN'T ALREADY EXIST
+
+            if(args.GetLength(0) > 3)
+            {
+                string contents = File.ReadAllText(args[3]);
+//                string json = JsonConvert.SerializeObject(contents, Formatting.Indented);
+                var httpContent = new StringContent(contents);
+                var createScenarioResult = await client.PostAsync($"http://{args[0]}/Board/CreateScenario?gameId={args[1]}&whoseTurn={args[2]}", httpContent) ;
+            }
+
             while (true)
             {
                 // Would you please tell me whose turn it is? Maybe later underline the trio above.
@@ -192,11 +204,9 @@ namespace HexCClient
 
                         if (m_showDebug)
                         {
-                            Console.WriteLine("\r\nYou can create this board as a test case:\r\n");
-                            foreach (var piece in b.PlacedPieces)
-                            {
-                                Console.WriteLine($"b.Add(new PlacedPiece(PiecesEnum.{piece.PieceType}, ColorsEnum.{piece.Color}, {piece.Location.Q}, {piece.Location.R}));");
-                            }
+                            Console.WriteLine("\r\nGame state debug script\r\n");
+                            Console.WriteLine();
+                            Console.WriteLine($"{args[0]} new-gamename {args[2]} filename-containing-the-following");
                             Console.WriteLine();
                             Console.Write("[");
                             bool fFirst = true;
@@ -205,12 +215,11 @@ namespace HexCClient
                                 if (fFirst)
                                 {
                                     fFirst = false;
-                                    //                                    Console.WriteLine("");
                                 }
                                 else
                                     Console.WriteLine(",");
                                 Console.Write("{");
-                                Console.Write("\"p\":\"{0}\",\"c\":\"{1}\",\"q\":{2},\"r\":{3}",
+                                Console.Write("\"Piece\":\"{0}\",\"Color\":\"{1}\",\"Q\":{2},\"R\":{3}",
                                     piece.PieceType.ToString(), piece.Color.ToString(), piece.Location.Q.ToString(), piece.Location.R.ToString());
                                 Console.Write("}");
 
