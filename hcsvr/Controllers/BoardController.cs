@@ -89,6 +89,10 @@ namespace hcsv2020.Controllers
 
             m_allBoards[gameId] = m_allBoardsOnLastTurnEnd[gameId];
             m_yourTurn[gameId] = m_yourTurnOnLastTurnEnd[gameId];
+
+            // We know this game is not over.
+            if (m_gamesOver.Contains(gameId))
+                m_gamesOver.Remove(gameId);
         }
 
 
@@ -208,6 +212,16 @@ namespace hcsv2020.Controllers
             m_yourTurn.Add(gameId, ColorsEnum.Black); // black goes first  
             m_yourTurnOnLastTurnEnd.Add(gameId, ColorsEnum.Black); // black went first in the very first game, and in the game before that
         }
+
+
+        public static void CreateGameScenario(string gameId, Board b, HexC.ColorsEnum col)
+        {
+            Debug.Assert(gameId.Length > 0);
+            Debug.Assert(false == m_allBoards.ContainsKey(gameId));
+
+            m_allBoards[gameId] = b;
+            m_yourTurn[gameId] = col;
+        }
     }
 
     /*
@@ -301,7 +315,7 @@ namespace hcsv2020.Controllers
                     case "White": return ColorsEnum.White;
                 }
                 System.Diagnostics.Debug.Assert(false);
-                return ColorsEnum.Black;
+                return ColorsEnum.Black;  // why pick a failure color? an why pick black? 
             }
         }
 
@@ -497,6 +511,49 @@ namespace hcsv2020.Controllers
         // a single mutex serializes endpoint calls
         private static System.Threading.Mutex m_serializerMutex = new System.Threading.Mutex();
 
+
+        [HttpPost]
+        public IActionResult CreateScenario([FromQuery] string gameId, [FromQuery] string whoseTurn)
+        {
+            m_serializerMutex.WaitOne();
+            try
+            {
+                if (null == gameId)
+                    return BadRequest();
+
+                // a scenario creates a gameId that doesn't exist, with a board setup and whoseTurn specified by json in the body
+                // visualBoardStore has no way to create 
+                bool fSuccess = false;
+                if (false == VisualBoardStore.ContainsGame(gameId))
+                {
+                    // feed new game to VisualBoardStore
+
+                    System.IO.Stream req = Request.Body;
+                    //     req.Seek(0, System.IO.SeekOrigin.Begin);
+                    string json = new System.IO.StreamReader(req).ReadToEnd();
+                    var pieces = System.Text.Json.JsonSerializer.Deserialize<List<Spot>>(json);
+
+                    HexC.Board board = new HexC.Board();
+                    foreach (Spot spot in pieces)
+                    {
+                        var piece = new PlacedPiece(FromString.PieceFromString(spot.Piece), FromString.ColorFromString(spot.Color), spot.Q, spot.R);
+                        if (null == board.AnyoneThere(piece.Location)) // don't tase me bro
+                            board.Add(piece);
+                        else
+                            Debug.Assert(false);// why did this client shove two pieces in one spot at me?
+                    }
+
+                    VisualBoardStore.CreateGameScenario(gameId, board, FromString.ColorFromString(whoseTurn));
+                    fSuccess = true;
+                }
+
+                return Ok(System.Text.Json.JsonSerializer.Serialize(fSuccess));
+            }
+            finally { m_serializerMutex.ReleaseMutex(); }
+        }
+
+
+
         // Receive moves that constitute a player's turn, but only accept them if they're confirmed to be a valid outcome.
         // if it is valid, also determine if it places any other player into checkmate.
 
@@ -547,6 +604,7 @@ namespace hcsv2020.Controllers
             finally { m_serializerMutex.ReleaseMutex(); }
         }
 
+
         [HttpPost]
         public IActionResult RollBackOne([FromQuery] string gameId)
         {
@@ -556,13 +614,12 @@ namespace hcsv2020.Controllers
                 if (null == gameId)
                     return BadRequest();
                 VisualBoardStore.MakeCertainGameExists(gameId);
-                VisualBoardStore.RollbackOneMove(gameId);
+                VisualBoardStore.RollbackOneMove(gameId); // also assures this game isn't over
 
                 return Ok();
             }
             finally { m_serializerMutex.ReleaseMutex(); }
         }
-
 
 
         [HttpGet]
