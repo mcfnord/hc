@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Diagnostics;
 
 
 /*
@@ -24,6 +23,24 @@ namespace HexC
 
 namespace HexC
 {
+    class MyDebug
+    {
+        static bool fNonStop = false;
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static void Assert(bool assertion)
+        {
+            if (fNonStop)
+            {
+                if (assertion == false)
+                    Console.WriteLine("Assertion failure."); // sure wanna see more but here we are.
+            }
+            else
+                System.Diagnostics.Debug.Assert(assertion); 
+        }
+    }
+
+
     public enum PiecesEnum { Pawn, Elephant, Castle, Queen, King }
     public enum ColorsEnum { White, Tan, Black }
 
@@ -190,7 +207,17 @@ namespace HexC
 
     public class PieceList : List<Piece>
     {
-        /*
+        public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
+        {
+            foreach (var item in this)
+            {
+                if (item.PieceType == pt)
+                    if (item.Color == c)
+                        return true;
+            }
+            return false;
+        }
+
         public void RemoveThePiece(PiecesEnum pt, ColorsEnum c)
         {
             foreach (var item in this)
@@ -201,21 +228,8 @@ namespace HexC
                         this.Remove(item);
                         return;
                     }
-
-                Debug.Assert(false); // why would we ask for a piece that isn't in this set?
             }
-        }
-        */
-
-        public bool ContainsThePiece(PiecesEnum pt, ColorsEnum c)
-        {
-            foreach (var item in this)
-            {
-                if (item.PieceType == pt)
-                    if (item.Color == c)
-                        return true;
-            }
-            return false;
+            MyDebug.Assert(false); // why would we ask for a piece that isn't in this set?
         }
     }
 
@@ -249,9 +263,9 @@ namespace HexC
         int r;
     }
 
-    enum EventTypeEnum { Add, Remove };
+    public enum EventTypeEnum { Add, Remove };
 
-    class PieceEvent
+    public class PieceEvent
     {
         public PieceEvent(PlacedPiece p, EventTypeEnum t)
         { this.p = p; this.t = t; }
@@ -264,11 +278,11 @@ namespace HexC
     }
 
 
-    class Board
+    public class Board
     {
         // MEMBERS
         List<PlacedPiece> placedPieces = new List<PlacedPiece>();
-        PieceList sidelined = new PieceList();
+        //        PieceList sidelined = new PieceList();
 
         BoardLocationList highlightedSpots = new BoardLocationList(); // purely cosmetic, only used by Windows Form
         public BoardLocationList HighlightedSpots { get { return highlightedSpots; } }
@@ -276,7 +290,55 @@ namespace HexC
 
         // PROPERTIES
         public List<PlacedPiece> PlacedPieces { get { return placedPieces; } }
-        public PieceList SidelinedPieces { get { return sidelined; } }
+        public PieceList SidelinedPieces
+        {
+            get
+            {   // given the standard board, infer that any piece not on the board is sidelined.
+                // this is a hack for simplicity and stability.
+                PieceList ret = new PieceList();
+
+                ret.Add(new Piece(PiecesEnum.King, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Queen, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Black));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Black));
+
+                ret.Add(new Piece(PiecesEnum.King, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Queen, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Tan));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.Tan));
+
+                ret.Add(new Piece(PiecesEnum.King, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Queen, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Castle, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Elephant, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.White));
+                ret.Add(new Piece(PiecesEnum.Pawn, ColorsEnum.White));
+
+                foreach (var piece in placedPieces)
+                {
+                    // for each, say, white pawn found on the board, remove one white pawn from the sidelined piece list
+                    if (ret.ContainsThePiece(piece.PieceType, piece.Color))
+                        ret.RemoveThePiece(piece.PieceType, piece.Color);
+                }
+                return ret;
+            }
+        }
 
         // CONSTRUCTORS
         public Board() { }
@@ -286,16 +348,19 @@ namespace HexC
             {
                 placedPieces.Add(p);
             }
+            /* sidelined is inferred now
             foreach (Piece p in cloneMe.sidelined)
             {
                 sidelined.Add(p);
             }
+            */
         }
 
         // METHODS
         public void Add(Piece p) // sidelined piece on board for color
         {
-            sidelined.Add(p);
+            // this shouldn't do anything anymore. because sidelined is automated now.
+            //            sidelined.Add(p);
         }
 
         public void Add(PlacedPiece p)
@@ -306,19 +371,18 @@ namespace HexC
             {
                 case PiecesEnum.King:
                     // if this is the king we're adding, well, let's make sure there isn't one already.
-                    Debug.Assert(null == this.FindPiece(PiecesEnum.King, p.Color));
+                    MyDebug.Assert(null == this.FindPiece(PiecesEnum.King, p.Color));
                     break;
 
                 case PiecesEnum.Queen:
-                    Debug.Assert(null == this.FindPiece(PiecesEnum.Queen, p.Color));
+                    MyDebug.Assert(null == this.FindPiece(PiecesEnum.Queen, p.Color));
                     break;
 
                     // others need checks
             }
 
             // And will I let you place a piece on top of another piece? Fuck no right?
-
-            //       Debug.Assert(null == this.AnyoneThere(p.Location));
+            //     Debug.Assert(null == this.AnyoneThere(p.Location)); // might need to be removed, but why? Sequence? Probably.
 
             placedPieces.Add(p);
         }
@@ -333,7 +397,30 @@ namespace HexC
                     return;
                 }
             }
-            Debug.Assert(false); // hey why remove what isn't there?
+            MyDebug.Assert(false); // hey why remove what isn't there?
+        }
+
+        // Sometimes I just know I want to move one spot to another, perhaps for building test cases.
+        public void BruteForceMove(int q1, int r1, int q2, int r2)
+        {
+            // I suppose I demand there's a piece there.
+            BoardLocation loc = new BoardLocation(q1, r1);
+            var piece = AnyoneThere(loc);
+            MyDebug.Assert(piece != null);
+            this.Remove(piece);
+
+            // If anyone's at the destination, I suppose we move that piece to the sideline.
+            BoardLocation loc2 = new BoardLocation(q2, r2);
+            var pieceDest = AnyoneThere(loc2);
+            if (null != pieceDest)
+            {
+                this.Remove(pieceDest);
+                SidelinedPieces.Add(pieceDest);
+            }
+
+            // and shove this piece to that spot.
+            PlacedPiece pp = new PlacedPiece(piece.PieceType, piece.Color, q2, r2);
+            this.Add(pp);
         }
 
         public List<PlacedPiece> PlacedPiecesThisColor(ColorsEnum col)
@@ -365,7 +452,9 @@ namespace HexC
             return null;
         }
 
-        BoardLocationList YankSpotsThatArentBoardSpots(BoardLocationList options, bool isAKing = false)
+        // a king can enter the portal if it's empty
+        // any piece can enter portal (and fall in) if it's occupied by a different color piece.
+        BoardLocationList YankSpotsThatArentBoardSpots(BoardLocationList options, bool canEnterPortal) //  = false)
         {
             BoardLocationList realOptions = new BoardLocationList();
 
@@ -374,8 +463,8 @@ namespace HexC
                 if (b.IsValidLocation())
                 {
                     if (b.IsPortal)
-                        if (false == isAKing)
-                            continue; // zero zero is only valid for a king.
+                        if (false == canEnterPortal) 
+                            continue; 
 
                     realOptions.Add(b);
                 }
@@ -415,7 +504,7 @@ namespace HexC
 
         bool HasTwoSameColorPawnNeighbors(PlacedPiece pawn)
         {
-            Debug.Assert(pawn.PieceType == PiecesEnum.Pawn);
+            MyDebug.Assert(pawn.PieceType == PiecesEnum.Pawn);
             BoardLocationList spots = PawnStatic.CouldGoIfOmnipotent(pawn.Location);
             int iSameColorPawnNeighbors = 0;
             foreach (var spot in spots)
@@ -440,12 +529,10 @@ namespace HexC
                 PlacedPiece p = AnyoneThere(b);
                 if (null != p)          // there's a piece
                 {
-                    if (p.PieceType != PiecesEnum.Pawn)
-                        continue;
-
-                    // it's a pawn. are two same-color pawns next to this pawn?
-                    if (true == HasTwoSameColorPawnNeighbors(p))
-                        continue;
+                    // if it's a pawn. are two same-color pawns next to this pawn?
+                    if (p.PieceType == PiecesEnum.Pawn)
+                        if (true == HasTwoSameColorPawnNeighbors(p))
+                            continue;
                 }
 
                 realOptions.Add(b);
@@ -456,7 +543,7 @@ namespace HexC
 
         PlacedPiece FindPiece(PiecesEnum type, ColorsEnum c)
         {
-            Debug.Assert(type == PiecesEnum.King || type == PiecesEnum.Queen);
+            MyDebug.Assert(type == PiecesEnum.King || type == PiecesEnum.Queen);
 
             foreach (PlacedPiece p in this.placedPieces)
             {
@@ -477,15 +564,25 @@ namespace HexC
             {
                 // Make a hypothetical board
                 Board bHypothetical = new Board(this);       // clone meeeee
-                bHypothetical.Remove(p);     // take me off.
+                bHypothetical.Remove(p);     // take me off. 
                 if (null != bHypothetical.AnyoneThere(bl))
                     bHypothetical.Remove(bHypothetical.AnyoneThere(bl));
                 bHypothetical.Add(new PlacedPiece(p, bl));   // put me on at the destination
 
                 // I wanna see this board.
                 Program.ShowBoard(bHypothetical);
+                Program.ShowTextBoard(bHypothetical);
 
                 // WHAT IF THE KING MOVES INTO CHECK BUT ALSO MOVES TO 0,0 FOR THE WIN??
+
+                // And 
+                if (null == bHypothetical.FindPiece(PiecesEnum.King, ColorsEnum.Black))
+                    Console.WriteLine("Black King missing from consideration in this check whether someone's in check.");
+                if (null == bHypothetical.FindPiece(PiecesEnum.King, ColorsEnum.White))
+                    Console.WriteLine("White King missing from consideration in this check whether someone's in check.");
+                if (null == bHypothetical.FindPiece(PiecesEnum.King, ColorsEnum.Tan))
+                    Console.WriteLine("Tan King missing from consideration in this check whether someone's in check.");
+
                 if (false == bHypothetical.InCheck(p.Color)) // see if i'm in check
                     realOptions.Add(bl);
             }
@@ -543,16 +640,31 @@ namespace HexC
         }
 
         // a shallow check sees where i can reach without regard to whetehr it puts me into check doing it.
-        // (a king can't end up in a position where i can reach it, even if me doing so is prevented cuz the move would put me in check)
+        // (a king can't end up in a position where i can reach it, 
+        // even if me doing so is prevented cuz the move would put me in check)
 
         BoardLocationList WhereCanIReach(PlacedPiece p, bool fShallowCheck = true)
         {
+            bool canEnterPortal = false;
+            var portalPieceBro = AnyoneThere(new BoardLocation(0, 0));
+            if (null == portalPieceBro)
+            {
+                if (p.PieceType == PiecesEnum.King) // a king can enter an empty portal
+                    canEnterPortal = true;
+            }
+            else
+            {
+                // any piece can enter the portal (and fall in) if a different-color piece occupies it
+                if (p.Color != portalPieceBro.Color)
+                    canEnterPortal = true;
+            }
+
             switch (p.PieceType)
             {
                 case PiecesEnum.Elephant:
                     {
                         BoardLocationList options = KnightStatic.CouldGoIfOmnipotent(p.Location);
-                        options = YankSpotsThatArentBoardSpots(options);
+                        options = YankSpotsThatArentBoardSpots(options, canEnterPortal);
                         options = YankSpotsOccupiedByThisColor(options, p.Color);
                         options = YankSpotsOccupiedByProtectedPawns(options);
                         if (fShallowCheck)
@@ -578,7 +690,7 @@ namespace HexC
                 case PiecesEnum.Pawn:
                     {
                         BoardLocationList stepSpots = PawnStatic.CouldGoIfOmnipotent(p.Location);
-                        stepSpots = YankSpotsThatArentBoardSpots(stepSpots);
+                        stepSpots = YankSpotsThatArentBoardSpots(stepSpots, canEnterPortal);
                         stepSpots = YankSpotsOccupiedByThisColor(stepSpots, null); // Yank spots occupied AT ALL
 
                         BoardLocationList attackWalkSpots = WalksToStarSpots(p.Location, false);
@@ -615,8 +727,18 @@ namespace HexC
                         {
                             foreach (BoardLocation l in ll)
                             {
+                                // if the run reaches the portal, 
+                                // and the portal is empty, 
+                                // or contains my own piece, 
+                                // then the run is over!
                                 if (l.IsPortal)
-                                    break; // run is over!
+                                {
+                                    var portalPiece = AnyoneThere(l);
+                                    if (null == portalPiece)
+                                        break;
+                                    if (portalPiece.Color == p.Color)
+                                        break;
+                                }
 
                                 PlacedPiece pThere = AnyoneThere(l);
                                 if (null == pThere)
@@ -632,9 +754,8 @@ namespace HexC
                             }
                         }
 
-                        options = YankSpotsThatArentBoardSpots(options);
+                        options = YankSpotsThatArentBoardSpots(options, canEnterPortal);
                         options = YankSpotsOccupiedByProtectedPawns(options);
-
 
                         if (PiecesEnum.Castle == p.PieceType)
                         {
@@ -678,7 +799,7 @@ namespace HexC
                     }
 
                 default:
-                    Debug.Assert(false);
+                    MyDebug.Assert(false);
                     return null;
             }
         }
@@ -698,10 +819,24 @@ namespace HexC
                 if (true == to.IsValidLocation())
                     if ((false == fSpotMustBeEmpty) || (null == this.AnyoneThere(to)))  /// we can't fucking land on our own piece tho! this is a current bug where it appears i can take my own piece.
                     {
-                        PlacedPiece one = this.AnyoneThere(new BoardLocation(fromHere.Q + RouteOne[iSet, 0], fromHere.R + RouteOne[iSet, 1]));
-                        PlacedPiece two = this.AnyoneThere(new BoardLocation(fromHere.Q + RouteTwo[iSet, 0], fromHere.R + RouteTwo[iSet, 1]));
-                        if (null == one || null == two)
-                            destys.Add(to);
+                        var bl1 = new BoardLocation(fromHere.Q + RouteOne[iSet, 0], fromHere.R + RouteOne[iSet, 1]);
+                        var bl2 = new BoardLocation(fromHere.Q + RouteTwo[iSet, 0], fromHere.R + RouteTwo[iSet, 1]);
+                        PlacedPiece one = this.AnyoneThere(bl1);
+                        PlacedPiece two = this.AnyoneThere(bl2);
+
+                        // is the first route empty AND not the portal? OR
+                        // is the second route empty AND not the portal?
+                        // (Routes through portals cause impossible scenario where king can move into what becomes attacked. Not sure if I'm trippin here.)
+                        if  (
+                                ((null == one) 
+//                          && (bl1.IsPortal == false)
+                                ) 
+                            ||
+                                ((null == two) 
+//                          && (bl2.IsPortal == false)
+                                )
+                            )
+                                destys.Add(to);
                     }
             }
             return destys;
@@ -767,10 +902,12 @@ namespace HexC
             if (null != deadp)
             {
                 events.Add(new PieceEvent(deadp, EventTypeEnum.Remove));
-                if (null != this.AnyoneThere(new BoardLocation(0, 0))) // u blockin my portal?
-                    if (sidelined.ContainsThePiece(deadp.PieceType, p.Color))
+
+                if ((null == this.AnyoneThere(new BoardLocation(0, 0))) ||  // if portal is empty,
+                    (deadp.Location.IsPortal))                              // or if portal is full and i'm attacking that piece in the portal
+                    if (SidelinedPieces.ContainsThePiece(deadp.PieceType, p.Color)) // and if a piece of mine of that type has perished previously
                     {
-                        events.Add(new PieceEvent(new PlacedPiece(deadp.PieceType, p.Color, 0, 0), EventTypeEnum.Add));
+                        events.Add(new PieceEvent(new PlacedPiece(deadp.PieceType, p.Color, 0, 0), EventTypeEnum.Add)); // then add to portal
                         // we don't remove it here!                    sidelined.RemoveThePiece (deadp.PieceType, p.Color);
                     }
             }
@@ -801,10 +938,50 @@ namespace HexC
             if (spot.Q != 0 || spot.R != 0 || p.PieceType == PiecesEnum.King) // nobody EXCEPT A KING gets to jump down the hole.
                 Console.WriteLine("Debug.Assert due to this problem, but for now just console log.");
 
-            PlacedPiece pp = new PlacedPiece(p, spot); // constructor clones me but to a new spot
-            events.Add(new PieceEvent(pp, EventTypeEnum.Add)); // I appear at this spot
+            if (false == spot.IsPortal) // we add from sideline if the jump resulted in that, but if jump is attack then piece falls down portal with victim
+            {
+                PlacedPiece pp = new PlacedPiece(p, spot); // constructor clones me but to a new spot
+                events.Add(new PieceEvent(pp, EventTypeEnum.Add)); // I appear at this spot
+            }
 
             return events;
+        }
+
+
+        // Copy the whole list to a new list.
+        List<PieceEvent> CopySet(List<PieceEvent> set)
+        {
+            List<PieceEvent> newSet = new List<PieceEvent>();
+            foreach (var item in set)
+                newSet.Add(item);
+            return newSet;
+        }
+
+        // Is this piece removed in this event set?
+        bool Moved(List<PieceEvent> set, PlacedPiece pp)
+        {
+            foreach (var anEvent in set)
+            {
+                if (anEvent.Regarding == pp)
+                    if (anEvent.EventType == EventTypeEnum.Remove)
+                        return true;
+            }
+            return false;
+        }
+
+        List<PieceEvent> ReplaceRemovalEventWithOriginalPos(List<PieceEvent> events, PlacedPiece originalPlacedPiece)
+        {
+            List<PieceEvent> newEvents = new List<PieceEvent>();
+            foreach(var anEvent in events)
+            {
+                var newEvent = new PieceEvent(anEvent.Regarding, anEvent.EventType);
+                if (anEvent.EventType == EventTypeEnum.Remove)
+                    if (anEvent.Regarding.PieceType == originalPlacedPiece.PieceType)
+                        if (anEvent.Regarding.Color == originalPlacedPiece.Color)
+                            newEvent = new PieceEvent(originalPlacedPiece, EventTypeEnum.Remove);
+                newEvents.Add(newEvent);
+            }
+            return newEvents;
         }
 
         // A Diddily Doo flips queen-king if possible, and determines what the piece can cause in both scenarios.
@@ -849,9 +1026,43 @@ namespace HexC
 
                     List<List<PieceEvent>> evenMorePotentialOutcomes = bAfterDooSwap.WhatCanICause(p);
 
-                    // each event set has one additional set, a swapparoo
-                    // though i bet i'm going to be missing check cases and crying here.
+                    // This set is based on the queen-king swapped board.
+                    // To translate this into the current board,
+                    // if the set contains no movement of king or queen,
+                    // just add king-queen swaps.
+                    // but if the set contains any remove-add of a king or a queen,
+                    // then replace the remove with a remove from the original king or queen spot.
+                    // this delivers clean add-remove sets.
                     foreach (var set in evenMorePotentialOutcomes)
+                    {
+                        List<PieceEvent> newSet = CopySet(set);
+
+                        if (Moved(newSet, newKing))
+                            newSet = ReplaceRemovalEventWithOriginalPos(newSet, king);
+                        else
+                        {
+                            newSet.Add(new PieceEvent(king, EventTypeEnum.Remove));
+                            newSet.Add(new PieceEvent(newKing, EventTypeEnum.Add));
+                        }
+
+                        if (Moved(newSet, newQueen))
+                            newSet = ReplaceRemovalEventWithOriginalPos(newSet, queen);
+                        else
+                        {
+                            newSet.Add(new PieceEvent(queen, EventTypeEnum.Remove));
+                            newSet.Add(new PieceEvent(newQueen, EventTypeEnum.Add));
+                        }
+
+                        // Feed these doctored sets into the global list of all potential outcomes
+                        allPotentialOutcomes.Add(newSet);
+                    }
+
+
+
+                        // each event set has one additional set, a swapparoo
+                        // though i bet i'm going to be MISSING CHECK CASES and crying here.
+                        /*
+                        foreach (var set in evenMorePotentialOutcomes)
                     {
                         set.Add(new PieceEvent(queen, EventTypeEnum.Remove));
                         set.Add(new PieceEvent(king, EventTypeEnum.Remove));
@@ -859,6 +1070,7 @@ namespace HexC
                         set.Add(new PieceEvent(newKing, EventTypeEnum.Add));
                         allPotentialOutcomes.Add(set);
                     }
+                    */
                     evenMorePotentialOutcomes = null;
                 }
             }
@@ -889,6 +1101,12 @@ namespace HexC
 
                 case PiecesEnum.King:
                     {
+                        // I SPECULATE THAT A KING'S MOVE MAYBE UM USES DEEP CHECK NOT SHALLOW CHECK?
+                        // naw, no change. i have to visualize better.
+                        // BoardLocationList spotsDeepCheck = WhereCanIReach(p, false); 
+                        // Mar 2020: To prevent king from moving into check, I am calling with true, for deep check... could be issues with this change!
+                        BoardLocationList spotsDeepCheck = WhereCanIReach(p, true);
+
                         BoardLocationList spots = WhereCanIReach(p);
                         // did i just land on some unfortunate piece? cuz those are events.
                         foreach (BoardLocation spot in spots)
