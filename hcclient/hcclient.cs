@@ -89,6 +89,7 @@ namespace HexCClient
                     pjp.Piece = pp.PieceType.ToString();
                     this.Add(pjp);
                 }
+                /*
                 foreach (var p in plSidelined)
                 {
                     PrettyJsonPlacedPiece pjp = new PrettyJsonPlacedPiece();
@@ -99,6 +100,7 @@ namespace HexCClient
 
                     this.Add(pjp);
                 }
+                */
             }
         }
 
@@ -151,9 +153,9 @@ namespace HexCClient
                     b = new Board();
                     foreach (Spot s in pieces)
                     {
-                        if (s.Q == 99)
-                            b.Add(new Piece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color)));
-                        else
+//                        if (s.Q == 99)
+//                            b.Add(new Piece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color)));
+//                        else
                             b.Add(new PlacedPiece(FromString.PieceFromString(s.Piece), FromString.ColorFromString(s.Color), s.Q, s.R));
                     }
 
@@ -200,13 +202,12 @@ namespace HexCClient
                         ShowTextBoard(b, cursor); // cursor could be null
 
                         Console.WriteLine();
-                        Console.WriteLine("134679:Move Cursor\r\n5:Select\r\nR:Reset to turn start\r\nF:Finish turn\r\nB:Back one move (if possible)\r\nD: Show/hide debug details");
+                        Console.WriteLine("134679 : Move Cursor\r\n5 : Select\r\nR : Reset to turn start\r\nF : Finish turn\r\nB : Back one move (if possible)\r\nD : Show/hide debug details");
 
                         if (m_showDebug)
                         {
-                            Console.WriteLine("\r\nGame state debug script\r\n");
                             Console.WriteLine();
-                            Console.WriteLine($"{args[0]} new-gamename {args[2]} filename-containing-the-following");
+                            Console.WriteLine($"{args[0]} new-gamename {m_whoseTurnItIs.Replace("\"", "")} filename-of-the-following");
                             Console.WriteLine();
                             Console.Write("[");
                             bool fFirst = true;
@@ -221,7 +222,7 @@ namespace HexCClient
                                 Console.Write("{");
                                 Console.Write("\"Piece\":\"{0}\",\"Color\":\"{1}\",\"Q\":{2},\"R\":{3}",
                                     piece.PieceType.ToString(), piece.Color.ToString(), piece.Location.Q.ToString(), piece.Location.R.ToString());
-                                Console.Write("}");
+                                Console.WriteLine("}");
 
                             }
                             Console.Write("]");
@@ -270,7 +271,7 @@ namespace HexCClient
                                 PrettyJsonBoard pjb = new PrettyJsonBoard(b.PlacedPieces, b.SidelinedPieces);
                                 HttpContent content = new StringContent(JsonConvert.SerializeObject(pjb), System.Text.Encoding.UTF8, "application/json");
                                 await client.PostAsync($"http://{args[0]}/Board/Moves?gameId={args[1]}", content);
-                                // ok, the event occurred... now ask whose turn it is! That's how we know if the turn was accepted! Clever, no?
+                                // ok, the event occurred... now ask whose turn it is! That's how we know if the turn was accepted!
                                 m_whoseTurnItIs = await client.GetStringAsync($"http://{args[0]}/Board/WhoseTurn?gameId={args[1]}");
                                 if (whoseTurnBefore == m_whoseTurnItIs)
                                     goto case 'r'; // failed. just reset the turn.
