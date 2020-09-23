@@ -222,7 +222,7 @@ namespace HexCClient
                                 Console.Write("{");
                                 Console.Write("\"Piece\":\"{0}\",\"Color\":\"{1}\",\"Q\":{2},\"R\":{3}",
                                     piece.PieceType.ToString(), piece.Color.ToString(), piece.Location.Q.ToString(), piece.Location.R.ToString());
-                                Console.WriteLine("}");
+                                Console.Write("}");
 
                             }
                             Console.Write("]");
